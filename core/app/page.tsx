@@ -5,11 +5,12 @@ import { AttendanceTable } from "@/components/attendance-table"
 import { LoginForm } from "@/components/login-form"
 import { Header } from "@/components/header"
 import { XMLImporter } from "@/components/xml-importer"
+import { ZKDataImporter } from "@/components/zk-data-importer"
 import { EmployeeManagement } from "@/components/employee-management"
 import { DepartmentManagement } from "@/components/department-management"
 import { CheckInSettingsManagement } from "@/components/check-in-settings-management"
 import { useLocalStorage } from "@/hooks/use-local-storage"
-import { Calendar, Users, TrendingUp, FileSpreadsheet, UserPlus, Building2, Clock } from "lucide-react"
+import { Calendar, Users, TrendingUp, FileSpreadsheet, UserPlus, Building2, Clock, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export interface Employee {
@@ -247,6 +248,49 @@ export default function Home() {
       })
       return newRecords
     })
+  }
+
+  // NEW: Handle ZK Data Import from attendance machine
+  const handleZKImport = (records: AttendanceRecord[], newEmployees: Employee[]) => {
+    console.log(`🚀 Importing ${newEmployees.length} employees and ${records.length} attendance records from ZK device`)
+    
+    // Update employee list (merge with existing, avoid duplicates)
+    setEmployees((prevEmployees) => {
+      const updatedEmployees = [...prevEmployees]
+
+      newEmployees.forEach((newEmp) => {
+        const existingIndex = updatedEmployees.findIndex((emp) => emp.id === newEmp.id)
+        if (existingIndex >= 0) {
+          // Update existing employee info
+          updatedEmployees[existingIndex] = { ...updatedEmployees[existingIndex], ...newEmp }
+        } else {
+          // Add new employee
+          updatedEmployees.push(newEmp)
+        }
+      })
+
+      return updatedEmployees
+    })
+
+    // Update attendance records (replace for imported date range)
+    setAttendanceRecords((prev) => {
+      // Keep existing records that are not in the new import
+      const existingRecords = prev.filter(record => {
+        return !records.some(newRecord => 
+          newRecord.employeeId === record.employeeId && 
+          newRecord.date === record.date
+        )
+      })
+      
+      // Merge with new records
+      const mergedRecords = [...existingRecords, ...records]
+      
+      console.log(`✅ Updated attendance: ${prev.length} → ${mergedRecords.length} records`)
+      return mergedRecords
+    })
+
+    // Show success message
+    console.log(`✅ ZK Import completed: ${newEmployees.length} employees, ${records.length} attendance records`)
   }
 
   const handleBonusPointUpdate = (employeeId: string, date: string, points: number) => {
@@ -492,6 +536,11 @@ export default function Home() {
                   Quản lý nhân viên
                 </Button>
               )}
+              <ZKDataImporter
+                onImport={handleZKImport}
+                checkInSettings={checkInSettings}
+              />
+              {/* Legacy XML Import - Keeping for backward compatibility */}
               <XMLImporter
                 onImport={handleXMLImport}
                 user={currentUser}
@@ -508,7 +557,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-yellow-600" />
               <p className="text-yellow-800">
-                <strong>Chưa có dữ liệu nhân viên.</strong> Vui lòng import file XML hoặc thêm nhân viên thủ công để tạo
+                <strong>Chưa có dữ liệu nhân viên.</strong> Vui lòng import dữ liệu từ máy chấm công ZKTeco, import file XML, hoặc thêm nhân viên thủ công để tạo
                 danh sách nhân viên và dữ liệu chấm công.
               </p>
             </div>

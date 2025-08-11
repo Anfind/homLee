@@ -69,7 +69,7 @@ export function LoginForm({ onLogin, users }: LoginFormProps) {
             <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <Lock className="w-10 h-10 text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống chấm công</CardTitle>
+            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm Lee Homes</CardTitle>
             <CardDescription className="text-gray-600 text-base">
               Đăng nhập để quản lý chấm công nhân viên
             </CardDescription>
