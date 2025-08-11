@@ -1,12 +1,19 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
+  "name": "homelee-attendance-system",
+  "version": "1.0.0",
   "private": true,
+  "description": "Hệ thống chấm công thông minh với ZKTeco integration",
+  "author": "HomeLee Team",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "dev:backend": "cd ../zktceo-backend && node server.js",
+    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
+    "mongo:seed": "node seed-data.js",
+    "mongo:test": "node test-mongo.js",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -61,12 +68,23 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
     "xlsx": "latest",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "node-zklib": "^1.1.5",
+    "concurrently": "^8.2.2"
   },
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
