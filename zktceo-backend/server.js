@@ -6,6 +6,33 @@ const ZKTeco = require('node-zklib');
 const app = express();
 const port = 3000;
 
+// Middleware để xử lý CORS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
+// Middleware để parse JSON
+app.use(express.json());
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({
+        success: true,
+        message: 'ZKTeco Backend Server is running',
+        timestamp: new Date().toISOString(),
+        server: 'zktceo-backend',
+        port: port
+    });
+});
+
 // Cấu hình thông tin máy chấm công
 const deviceIP = '192.168.1.240'; // IP của máy chấm công
 const devicePort = 8818;          // Port đã xác định từ phần mềm Wise Eye
