@@ -67,8 +67,7 @@ const CheckInSettingsSchema = new Schema<ICheckInSettings>({
   timestamps: true
 })
 
-// Create indexes
-CheckInSettingsSchema.index({ dayOfWeek: 1 }, { unique: true })
+// Create indexes (dayOfWeek already has unique: true in schema definition)
 CheckInSettingsSchema.index({ isActive: 1 })
 
 export const CheckInSettings = mongoose.models.CheckInSettings || mongoose.model<ICheckInSettings>('CheckInSettings', CheckInSettingsSchema)

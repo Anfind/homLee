@@ -58,8 +58,7 @@ const UserSchema = new Schema<IUser>({
   timestamps: true
 })
 
-// Create indexes
-UserSchema.index({ username: 1 }, { unique: true })
+// Create indexes (username already has unique: true in schema definition)
 UserSchema.index({ role: 1 })
 UserSchema.index({ department: 1 })
 

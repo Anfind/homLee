@@ -9,6 +9,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    // Optimize hydration
+    optimizePackageImports: ['lucide-react'],
+  },
+  // Handle browser extension interference
+  reactStrictMode: true,
 }
 
 export default nextConfig

@@ -34,8 +34,8 @@ const DepartmentSchema = new Schema<IDepartment>({
   _id: false // Disable auto-generated _id since we provide our own
 })
 
-// Create indexes
-DepartmentSchema.index({ name: 1 }, { unique: true })
+// Create indexes  
+// Note: name field already has unique: true in schema, no need for separate index
 DepartmentSchema.index({ isActive: 1 })
 
 export const Department = mongoose.models.Department || mongoose.model<IDepartment>('Department', DepartmentSchema)

@@ -221,7 +221,7 @@ export function ZKDataImporter({ onImport, checkInSettings }: ZKDataImporterProp
           </Button>
           
           <span className="text-sm text-muted-foreground">
-            Backend: http://localhost:3000
+            Backend: {process.env.NEXT_PUBLIC_ZKTECO_BACKEND_URL || 'http://localhost:3000/api'}
           </span>
         </div>
 

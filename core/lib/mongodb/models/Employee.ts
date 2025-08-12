@@ -36,6 +36,7 @@ const EmployeeSchema = new Schema<IEmployee>({
 
 // Create indexes for better performance
 EmployeeSchema.index({ department: 1 })
-EmployeeSchema.index({ name: 1 })
+// Note: _id index is automatically created by MongoDB, no need to manually define it
+// Note: Removed name index as it's not frequently queried and causes duplicate warning
 
 export const Employee = mongoose.models.Employee || mongoose.model<IEmployee>('Employee', EmployeeSchema)

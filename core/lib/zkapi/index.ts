@@ -22,7 +22,7 @@ export interface ZKResponse<T> {
 }
 
 class ZKAPIService {
-  private baseURL = 'http://localhost:3000/api'
+  private baseURL = process.env.NEXT_PUBLIC_ZKTECO_BACKEND_URL || 'http://localhost:3000/api'
 
   /**
    * Convert UTC timestamp to Vietnam timezone (UTC+7)
