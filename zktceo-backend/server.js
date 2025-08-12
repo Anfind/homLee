@@ -47,12 +47,47 @@ app.get('/api/attendance', async (req, res) => {
     try {
         await zk.createSocket();
         const logs = await zk.getAttendances();
+        
+        // 🔍 DEBUG: Phân tích dữ liệu trả về
+        console.log(`📊 DEBUG: Tổng số records: ${logs.data.length}`);
+        
+        if (logs.data.length > 0) {
+            // Tìm record cũ nhất và mới nhất
+            const times = logs.data.map(record => new Date(record.recordTime).getTime());
+            const oldestTime = new Date(Math.min(...times));
+            const newestTime = new Date(Math.max(...times));
+            
+            console.log(`📅 Oldest record: ${oldestTime.toISOString()} (VN: ${new Date(oldestTime.getTime() + 7*60*60*1000).toISOString()})`);
+            console.log(`📅 Newest record: ${newestTime.toISOString()} (VN: ${new Date(newestTime.getTime() + 7*60*60*1000).toISOString()})`);
+            
+            // Phân tích theo giờ
+            const hourStats = {};
+            logs.data.forEach(record => {
+                const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
+                const hour = vnTime.getHours();
+                hourStats[hour] = (hourStats[hour] || 0) + 1;
+            });
+            
+            console.log('⏰ Records per hour (VN time):');
+            for (let h = 0; h < 24; h++) {
+                if (hourStats[h]) {
+                    console.log(`   ${h.toString().padStart(2, '0')}:xx - ${hourStats[h]} records`);
+                }
+            }
+        }
+        
         res.status(200).json({
             success: true,
             message: `Lấy thành công ${logs.data.length} bản ghi chấm công.`,
-            data: logs.data
+            data: logs.data,
+            debug: {
+                totalRecords: logs.data.length,
+                oldestRecord: logs.data.length > 0 ? Math.min(...logs.data.map(r => new Date(r.recordTime).getTime())) : null,
+                newestRecord: logs.data.length > 0 ? Math.max(...logs.data.map(r => new Date(r.recordTime).getTime())) : null
+            }
         });
     } catch (error) {
+        console.error('❌ Error details:', error);
         res.status(500).json({ success: false, message: 'Lỗi xử lý.', error: error.message });
     } finally {
         await zk.disconnect();
@@ -91,13 +126,38 @@ app.get('/api/attendance/by-date', async (req, res) => {
         console.log(`Đã lấy về ${logs.data.length} bản ghi.`);
 
         // --- 4. Lọc dữ liệu trên server ---
+        console.log(`🔍 DEBUG: Filtering ${logs.data.length} records...`);
+        console.log(`📅 Filter range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+        
         const filteredLogs = logs.data.filter(log => {
             const recordDate = new Date(log.recordTime);
-            // Giữ lại các bản ghi có thời gian nằm trong khoảng yêu cầu
-            return recordDate >= startDate && recordDate <= endDate;
+            const match = recordDate >= startDate && recordDate <= endDate;
+            
+            // Debug first few records
+            if (logs.data.indexOf(log) < 5) {
+                const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
+                console.log(`   Record ${logs.data.indexOf(log)}: ${log.recordTime} (VN: ${vnTime.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
+            }
+            
+            return match;
         });
 
-        console.log(`Lọc thành công! Tìm thấy ${filteredLogs.length} bản ghi phù hợp.`);
+        console.log(`✅ Lọc thành công! Tìm thấy ${filteredLogs.length} bản ghi phù hợp.`);
+        
+        // Debug: Show time distribution of filtered results
+        if (filteredLogs.length > 0) {
+            const hourStats = {};
+            filteredLogs.forEach(record => {
+                const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
+                const hour = vnTime.getHours();
+                hourStats[hour] = (hourStats[hour] || 0) + 1;
+            });
+            
+            console.log('⏰ Filtered records per hour (VN time):');
+            Object.keys(hourStats).sort((a,b) => a-b).forEach(hour => {
+                console.log(`   ${hour.padStart(2, '0')}:xx - ${hourStats[hour]} records`);
+            });
+        }
 
         // --- 5. Trả về kết quả đã lọc ---
         res.status(200).json({
@@ -158,10 +218,85 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
+// =======================================================================
+// API 4: KIỂM TRA THÔNG TIN THIẾT BỊ VÀ THỜI GIAN (Debug)
+// =======================================================================
+app.get('/api/device/info', async (req, res) => {
+    console.log('🔍 Nhận được yêu cầu kiểm tra thông tin thiết bị...');
+    
+    const zk = new ZKTeco(deviceIP, devicePort, timeout);
+
+    try {
+        await zk.createSocket();
+        console.log('✅ Kết nối thiết bị thành công!');
+
+        // Lấy thông tin cơ bản
+        const info = {
+            deviceIP: deviceIP,
+            devicePort: devicePort,
+            connectionTime: new Date().toISOString(),
+            serverTime: new Date().toISOString(),
+            serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        };
+
+        // Thử lấy thêm thông tin từ device nếu có
+        try {
+            // Một số device có thể có method getInfo()
+            const deviceInfo = await zk.getInfo();
+            info.deviceInfo = deviceInfo;
+        } catch (e) {
+            console.log('ℹ️ Device không hỗ trợ getInfo()');
+        }
+
+        // Lấy số lượng users và attendance records
+        try {
+            const users = await zk.getUsers();
+            info.totalUsers = users.data.length;
+        } catch (e) {
+            console.log('ℹ️ Không thể lấy số lượng users');
+        }
+
+        try {
+            const attendance = await zk.getAttendances();
+            info.totalAttendanceRecords = attendance.data.length;
+            
+            if (attendance.data.length > 0) {
+                const times = attendance.data.map(r => new Date(r.recordTime).getTime());
+                info.oldestRecord = new Date(Math.min(...times)).toISOString();
+                info.newestRecord = new Date(Math.max(...times)).toISOString();
+            }
+        } catch (e) {
+            console.log('ℹ️ Không thể lấy attendance info');
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Lấy thông tin thiết bị thành công',
+            data: info
+        });
+
+    } catch (error) {
+        console.error('❌ Lỗi kết nối thiết bị:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi kết nối thiết bị',
+            error: error.message
+        });
+    } finally {
+        await zk.disconnect();
+        console.log('✅ Đã ngắt kết nối thiết bị.');
+    }
+});
+
 // Khởi chạy server
 app.listen(port, () => {
     console.log(`Backend server đang chạy tại http://localhost:${port}`);
-    console.log(`🚀 Để lấy toàn bộ dữ liệu chấm công: http://localhost:${port}/api/attendance`);
-    console.log(`🚀 Để lấy dữ liệu chấm công theo ngày: http://localhost:${port}/api/attendance/by-date?start=YYYY-MM-DD&end=YYYY-MM-DD`);
-    console.log(`🚀 Để lấy danh sách nhân viên: http://localhost:${port}/api/users`);
+    console.log(`🚀 API Endpoints:`);
+    console.log(`   • http://localhost:${port}/api/attendance - Lấy tất cả dữ liệu chấm công`);
+    console.log(`   • http://localhost:${port}/api/attendance/by-date?start=YYYY-MM-DD&end=YYYY-MM-DD - Lấy dữ liệu theo ngày`);
+    console.log(`   • http://localhost:${port}/api/users - Lấy danh sách nhân viên`);
+    console.log(`   • http://localhost:${port}/api/device/info - Kiểm tra thông tin thiết bị (DEBUG)`);
+    console.log(`   • http://localhost:${port}/api/health - Health check`);
+    console.log('');
+    console.log('🔍 DEBUG Mode: Enhanced logging enabled for troubleshooting');
 });

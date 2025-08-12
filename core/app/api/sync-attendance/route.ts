@@ -2,26 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb/connection'
 import { AttendanceRecord } from '@/lib/mongodb/models/AttendanceRecord'
 import { Employee } from '@/lib/mongodb/models/Employee'
-
-// Helper function to convert ISO string to date and time
-function parseAttendanceTime(isoString: string) {
-  const date = new Date(isoString)
-  
-  // Format date as YYYY-MM-DD
-  const dateStr = date.toISOString().split('T')[0]
-  
-  // Format time as HH:MM (24-hour format)
-  const timeStr = date.toTimeString().slice(0, 5)
-  
-  return { date: dateStr, time: timeStr }
-}
-
-// Helper function to determine if time is morning or afternoon
-function getShiftType(time: string): 'morning' | 'afternoon' {
-  const [hours] = time.split(':').map(Number)
-  // Assuming morning shift: 6:00-12:00, afternoon shift: 12:01-18:00
-  return hours <= 12 ? 'morning' : 'afternoon'
-}
+import { 
+  processZKAttendanceRecord, 
+  calculateDailyPoints, 
+  categorizeCheckIns,
+  getCheckInSettings 
+} from '@/lib/attendance/zk-processor'
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     const attendanceRecords = zkData.data
+    const checkInSettings = getCheckInSettings()
+    
     const syncResults = {
       processed: 0,
       created: 0,
@@ -64,33 +52,34 @@ export async function POST(request: NextRequest) {
     const groupedRecords = new Map<string, {
       employeeId: string
       date: string
-      checkIns: Array<{
-        time: string
-        shift: 'morning' | 'afternoon'
-      }>
+      checkIns: string[] // Array of all check-in times for the day
     }>()
+    
+    console.log(`🔄 Processing ${attendanceRecords.length} ZK attendance records...`)
     
     for (const record of attendanceRecords) {
       try {
-        const { date, time } = parseAttendanceTime(record.recordTime)
-        const employeeId = record.deviceUserId
-        const key = `${employeeId}-${date}`
+        // Process each ZK record với timezone conversion
+        const processed = processZKAttendanceRecord(record.recordTime, record.deviceUserId, checkInSettings)
+        const key = `${processed.employeeId}-${processed.date}`
         
         if (!groupedRecords.has(key)) {
           groupedRecords.set(key, {
-            employeeId,
-            date,
+            employeeId: processed.employeeId,
+            date: processed.date,
             checkIns: []
           })
         }
         
         const group = groupedRecords.get(key)!
-        group.checkIns.push({
-          time,
-          shift: getShiftType(time)
-        })
+        
+        // Thêm time vào danh sách check-ins (tránh duplicate)
+        if (!group.checkIns.includes(processed.time)) {
+          group.checkIns.push(processed.time)
+        }
         
         syncResults.processed++
+        
       } catch (error) {
         syncResults.errors.push({
           record: record,
@@ -99,7 +88,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Process grouped records and save to MongoDB
+    console.log(`📊 Grouped into ${groupedRecords.size} unique employee-date combinations`)
+
+    // Process grouped records và calculate points properly
     for (const [key, groupData] of groupedRecords) {
       try {
         // Verify employee exists
@@ -113,26 +104,35 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Sort check-ins by time and determine morning/afternoon
-        const sortedCheckIns = groupData.checkIns.sort((a: any, b: any) => a.time.localeCompare(b.time))
+        // Calculate points using proper logic với tất cả check-ins
+        const pointsResult = calculateDailyPoints(
+          groupData.date, 
+          groupData.checkIns, 
+          checkInSettings
+        )
         
-        const morningCheckIns = sortedCheckIns.filter((c: any) => c.shift === 'morning')
-        const afternoonCheckIns = sortedCheckIns.filter((c: any) => c.shift === 'afternoon')
+        // Categorize check-ins để tương thích với existing schema
+        const { morningCheckIn, afternoonCheckIn } = categorizeCheckIns(groupData.checkIns)
         
         // Build attendance record
         const attendanceData = {
           employeeId: groupData.employeeId,
           date: groupData.date,
-          morningCheckIn: morningCheckIns.length > 0 ? morningCheckIns[0].time : undefined,
-          afternoonCheckIn: afternoonCheckIns.length > 0 ? afternoonCheckIns[0].time : undefined,
-          points: 0 // Will be calculated based on check-in rules
+          morningCheckIn,
+          afternoonCheckIn,
+          points: pointsResult.totalPoints,
+          // Store detailed shift information for reference
+          shifts: pointsResult.awardedShifts.map(awarded => ({
+            id: awarded.shiftId,
+            name: awarded.shiftName,
+            startTime: awarded.checkInTime, // Store actual check-in time
+            endTime: awarded.checkInTime,   // Same as start for awarded shifts
+            points: awarded.points,
+            checkedIn: true
+          }))
         }
 
-        // Calculate points based on check-ins
-        let points = 0
-        if (attendanceData.morningCheckIn) points += 0.5
-        if (attendanceData.afternoonCheckIn) points += 0.5
-        attendanceData.points = points
+        console.log(`💰 Employee ${groupData.employeeId} on ${groupData.date}: ${pointsResult.totalPoints} points from ${groupData.checkIns.length} check-ins`)
 
         // Upsert attendance record
         const existingRecord = await AttendanceRecord.findOne({
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật từ ${syncResults.processed} bản ghi`,
+      message: `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật từ ${syncResults.processed} bản ghi ZK`,
       data: syncResults
     })
 

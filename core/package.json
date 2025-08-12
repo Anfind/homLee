@@ -13,6 +13,7 @@
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
     "mongo:seed": "node seed-data.js",
     "mongo:seed-employees": "node seed-employees.js",
+    "test:zk-processor": "node test-zk-processor.js",
     "mongo:test": "node test-mongo.js",
     "type-check": "tsc --noEmit"
   },
