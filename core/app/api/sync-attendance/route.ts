@@ -11,9 +11,11 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔄 Starting attendance sync...')
     await connectDB()
     
     const { startDate, endDate } = await request.json()
+    console.log('📅 Sync params:', { startDate, endDate })
     
     // Fetch attendance data from zktceo-backend
     let apiUrl = 'http://localhost:3000/api/attendance'
@@ -21,8 +23,16 @@ export async function POST(request: NextRequest) {
       apiUrl += `/by-date?start=${startDate}&end=${endDate}`
     }
     
+    console.log('📡 Fetching from ZKTeco backend:', apiUrl)
     const response = await fetch(apiUrl)
+    
+    if (!response.ok) {
+      console.error('❌ ZKTeco backend response not OK:', response.status, response.statusText)
+      throw new Error(`Backend responded with ${response.status}: ${response.statusText}`)
+    }
+    
     const zkData = await response.json()
+    console.log('✅ ZKTeco backend response:', zkData.success ? 'Success' : 'Failed')
     
     if (!zkData.success) {
       return NextResponse.json({
@@ -167,7 +177,15 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Sync attendance error:', error)
+    console.error('❌ Sync attendance error:', error)
+    
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('Error name:', error.name)
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+    
     return NextResponse.json({
       success: false,
       message: 'Lỗi đồng bộ dữ liệu chấm công',

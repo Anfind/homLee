@@ -4,11 +4,20 @@ import { Employee } from '@/lib/mongodb/models/Employee'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔄 Starting employee sync...')
     await connectDB()
     
     // Fetch employees data from zktceo-backend
+    console.log('📡 Fetching from ZKTeco backend: http://localhost:3000/api/users')
     const response = await fetch('http://localhost:3000/api/users')
+    
+    if (!response.ok) {
+      console.error('❌ ZKTeco backend response not OK:', response.status, response.statusText)
+      throw new Error(`Backend responded with ${response.status}: ${response.statusText}`)
+    }
+    
     const zkData = await response.json()
+    console.log('✅ ZKTeco backend response:', zkData.success ? 'Success' : 'Failed')
     
     if (!zkData.success) {
       return NextResponse.json({
@@ -70,7 +79,15 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Sync employees error:', error)
+    console.error('❌ Sync employees error:', error)
+    
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('Error name:', error.name)
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+    
     return NextResponse.json({
       success: false,
       message: 'Lỗi đồng bộ nhân viên',

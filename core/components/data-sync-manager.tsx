@@ -37,12 +37,17 @@ export default function DataSyncManager() {
         }
       })
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
       const result = await response.json()
       setEmployeeResult(result)
     } catch (error) {
+      console.error('Employee sync error:', error)
       setEmployeeResult({
         success: false,
-        message: 'Lỗi kết nối API'
+        message: `Lỗi kết nối API: ${error instanceof Error ? error.message : 'Unknown error'}`
       })
     } finally {
       setIsEmployeeSync(false)
@@ -65,12 +70,17 @@ export default function DataSyncManager() {
         })
       })
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
       const result = await response.json()
       setAttendanceResult(result)
     } catch (error) {
+      console.error('Attendance sync error:', error)
       setAttendanceResult({
         success: false,
-        message: 'Lỗi kết nối API'
+        message: `Lỗi kết nối API: ${error instanceof Error ? error.message : 'Unknown error'}`
       })
     } finally {
       setIsAttendanceSync(false)
