@@ -88,9 +88,38 @@ app.get('/api/attendance', async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Error details:', error);
-        res.status(500).json({ success: false, message: 'Lỗi xử lý.', error: error.message });
+        console.error('❌ Error name:', error.name);
+        console.error('❌ Error message:', error.message);
+        
+        let errorMessage = 'Lỗi xử lý dữ liệu chấm công';
+        if (error.name === 'ZKError' || error.constructor.name === 'ZKError') {
+            errorMessage = `Lỗi thiết bị ZKTeco: ${error.message}`;
+        } else if (error.code === 'ECONNREFUSED') {
+            errorMessage = 'Không thể kết nối tới thiết bị ZKTeco. Kiểm tra IP và port.';
+        } else if (error.code === 'ETIMEDOUT') {
+            errorMessage = 'Timeout khi kết nối thiết bị ZKTeco.';
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: errorMessage, 
+            error: error.message,
+            details: {
+                name: error.name,
+                code: error.code,
+                deviceIP: deviceIP,
+                devicePort: devicePort
+            }
+        });
     } finally {
-        await zk.disconnect();
+        try {
+            if (zk && typeof zk.disconnect === 'function') {
+                await zk.disconnect();
+                console.log('🔌 Đã ngắt kết nối thiết bị.');
+            }
+        } catch (disconnectError) {
+            console.error('⚠️ Lỗi khi ngắt kết nối:', disconnectError.message);
+        }
     }
 });
 
@@ -125,10 +154,13 @@ app.get('/api/attendance/by-date', async (req, res) => {
     const zk = new ZKTeco(deviceIP, devicePort, timeout);
     try {
         // --- 3. Kết nối và lấy TẤT CẢ dữ liệu ---
+        console.log('🔌 Đang kết nối thiết bị...');
         await zk.createSocket();
-        console.log('Đang lấy toàn bộ dữ liệu để lọc...');
+        console.log('✅ Kết nối thành công!');
+        
+        console.log('📥 Đang lấy toàn bộ dữ liệu để lọc...');
         const logs = await zk.getAttendances();
-        console.log(`Đã lấy về ${logs.data.length} bản ghi.`);
+        console.log(`📊 Đã lấy về ${logs.data.length} bản ghi.`);
 
         // --- 4. Lọc dữ liệu trên server với UTC comparison (FIXED) ---
         console.log(`🔍 DEBUG: Filtering ${logs.data.length} records...`);
@@ -171,9 +203,42 @@ app.get('/api/attendance/by-date', async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Lỗi xử lý.', error: error.message });
+        console.error('❌ Chi tiết lỗi:', error);
+        console.error('❌ Error name:', error.name);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error stack:', error.stack);
+        
+        // Handle specific ZK errors
+        let errorMessage = 'Lỗi xử lý dữ liệu chấm công';
+        if (error.name === 'ZKError' || error.constructor.name === 'ZKError') {
+            errorMessage = `Lỗi thiết bị ZKTeco: ${error.message}`;
+        } else if (error.code === 'ECONNREFUSED') {
+            errorMessage = 'Không thể kết nối tới thiết bị ZKTeco. Kiểm tra IP và port.';
+        } else if (error.code === 'ETIMEDOUT') {
+            errorMessage = 'Timeout khi kết nối thiết bị ZKTeco.';
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: errorMessage,
+            error: error.message,
+            details: {
+                name: error.name,
+                code: error.code,
+                deviceIP: deviceIP,
+                devicePort: devicePort
+            }
+        });
     } finally {
-        await zk.disconnect();
+        // Ensure disconnect even if error occurs
+        try {
+            if (zk && typeof zk.disconnect === 'function') {
+                await zk.disconnect();
+                console.log('🔌 Đã ngắt kết nối thiết bị.');
+            }
+        } catch (disconnectError) {
+            console.error('⚠️ Lỗi khi ngắt kết nối:', disconnectError.message);
+        }
     }
 });
 
@@ -210,15 +275,39 @@ app.get('/api/users', async (req, res) => {
 
     } catch (error) {
         console.error('❌ Đã xảy ra lỗi:', error);
+        console.error('❌ Error name:', error.name);
+        console.error('❌ Error message:', error.message);
+        
+        let errorMessage = 'Đã xảy ra lỗi trong quá trình xử lý';
+        if (error.name === 'ZKError' || error.constructor.name === 'ZKError') {
+            errorMessage = `Lỗi thiết bị ZKTeco: ${error.message}`;
+        } else if (error.code === 'ECONNREFUSED') {
+            errorMessage = 'Không thể kết nối tới thiết bị ZKTeco. Kiểm tra IP và port.';
+        } else if (error.code === 'ETIMEDOUT') {
+            errorMessage = 'Timeout khi kết nối thiết bị ZKTeco.';
+        }
+        
         res.status(500).json({
             success: false,
-            message: 'Đã xảy ra lỗi trong quá trình xử lý.',
-            error: error.message
+            message: errorMessage,
+            error: error.message,
+            details: {
+                name: error.name,
+                code: error.code,
+                deviceIP: deviceIP,
+                devicePort: devicePort
+            }
         });
     } finally {
         // 4. Ngắt kết nối
-        await zk.disconnect();
-        console.log('✅ Đã ngắt kết nối.');
+        try {
+            if (zk && typeof zk.disconnect === 'function') {
+                await zk.disconnect();
+                console.log('✅ Đã ngắt kết nối.');
+            }
+        } catch (disconnectError) {
+            console.error('⚠️ Lỗi khi ngắt kết nối:', disconnectError.message);
+        }
     }
 });
 
@@ -281,14 +370,38 @@ app.get('/api/device/info', async (req, res) => {
 
     } catch (error) {
         console.error('❌ Lỗi kết nối thiết bị:', error);
+        console.error('❌ Error name:', error.name);
+        console.error('❌ Error message:', error.message);
+        
+        let errorMessage = 'Lỗi kết nối thiết bị';
+        if (error.name === 'ZKError' || error.constructor.name === 'ZKError') {
+            errorMessage = `Lỗi thiết bị ZKTeco: ${error.message}`;
+        } else if (error.code === 'ECONNREFUSED') {
+            errorMessage = 'Không thể kết nối tới thiết bị ZKTeco. Kiểm tra IP và port.';
+        } else if (error.code === 'ETIMEDOUT') {
+            errorMessage = 'Timeout khi kết nối thiết bị ZKTeco.';
+        }
+        
         res.status(500).json({
             success: false,
-            message: 'Lỗi kết nối thiết bị',
-            error: error.message
+            message: errorMessage,
+            error: error.message,
+            details: {
+                name: error.name,
+                code: error.code,
+                deviceIP: deviceIP,
+                devicePort: devicePort
+            }
         });
     } finally {
-        await zk.disconnect();
-        console.log('✅ Đã ngắt kết nối thiết bị.');
+        try {
+            if (zk && typeof zk.disconnect === 'function') {
+                await zk.disconnect();
+                console.log('✅ Đã ngắt kết nối thiết bị.');
+            }
+        } catch (disconnectError) {
+            console.error('⚠️ Lỗi khi ngắt kết nối:', disconnectError.message);
+        }
     }
 });
 
