@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 
 export interface Employee {
   id: string
+  _id?: string // MongoDB primary key (optional for compatibility)
   name: string
   title: string
   department: string
@@ -198,7 +199,7 @@ export default function Home() {
           
           // Debug: Check if employees match attendance records
           if (attendanceResult.data.length > 0) {
-            const attendanceEmployeeIds = [...new Set(attendanceResult.data.map(r => r.employeeId))]
+            const attendanceEmployeeIds = [...new Set(attendanceResult.data.map((r: AttendanceRecord) => r.employeeId))]
             console.log('👥 Attendance Employee IDs:', attendanceEmployeeIds.slice(0, 10))
             console.log('👥 MongoDB Employee IDs:', mongoEmployees.slice(0, 10).map(e => e.id || e._id))
             

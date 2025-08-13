@@ -41,6 +41,11 @@ export function AttendanceTable({
   const [bonusValue, setBonusValue] = useState("")
   const [historyDialog, setHistoryDialog] = useState<{ employeeId: string; date: string } | null>(null)
 
+  // Helper to get employeeId (handle both id and _id fields from MongoDB)
+  const getEmployeeId = (employee: any): string => {
+    return employee.id || employee._id || ''
+  }
+
   // State for direct editing of custom daily values (including commission)
   const [editingCustomCell, setEditingCustomCell] = useState<{
     employeeId: string
@@ -110,7 +115,7 @@ export function AttendanceTable({
       filtered = filtered.filter(
         (emp) =>
           emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          emp.id.includes(searchTerm) ||
+          getEmployeeId(emp).includes(searchTerm) ||
           emp.department.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
@@ -119,6 +124,13 @@ export function AttendanceTable({
     if (departmentFilter !== "all") {
       filtered = filtered.filter((emp) => emp.department === departmentFilter)
     }
+
+    // Sort by ID (handle both id and _id fields)
+    filtered.sort((a, b) => {
+      const idA = getEmployeeId(a)
+      const idB = getEmployeeId(b)
+      return idA.localeCompare(idB, undefined, { numeric: true })
+    })
 
     return filtered
   }, [employees, user, searchTerm, departmentFilter])
@@ -249,9 +261,10 @@ export function AttendanceTable({
     }
 
     const data = filteredEmployees.map((employee, index) => {
+      const employeeId = getEmployeeId(employee)
       const row: any = {
         STT: index + 1,
-        ID: employee.id,
+        ID: employeeId,
         Tên: employee.name,
         "Tước vị": employee.title, // Use the updated title
         "Phòng ban": employee.department,
@@ -259,21 +272,21 @@ export function AttendanceTable({
 
       // Add daily points
       daysInMonth.forEach((dayInfo) => {
-        const record = getAttendanceRecord(employee.id, dayInfo.day)
-        const bonus = getBonusPoints(employee.id, dayInfo.day)
+        const record = getAttendanceRecord(employeeId, dayInfo.day)
+        const bonus = getBonusPoints(employeeId, dayInfo.day)
         const totalDayPoints = (record?.points || 0) + bonus
         row[`${dayInfo.dayName} ${dayInfo.day}`] = totalDayPoints // Include day name in header
       })
 
-      row["Tổng điểm"] = getTotalPoints(employee.id)
-      row["Điểm cộng thêm"] = daysInMonth.reduce((sum, dayInfo) => sum + getBonusPoints(employee.id, dayInfo.day), 0)
+      row["Tổng điểm"] = getTotalPoints(employeeId)
+      row["Điểm cộng thêm"] = daysInMonth.reduce((sum, dayInfo) => sum + getBonusPoints(employeeId, dayInfo.day), 0)
 
       // Commission is now a custom column, let's assume it's also a monthly value for export
-      row["Hoa hồng"] = getCustomDailyValue(employee.id, daysInMonth[0].dateStr, "commission")
+      row["Hoa hồng"] = getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission")
 
       // Add custom columns to export
       customColumns.forEach((col) => {
-        const monthlyCustomValue = getCustomDailyValue(employee.id, daysInMonth[0].dateStr, col.key)
+        const monthlyCustomValue = getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key)
         row[col.name] = monthlyCustomValue
       })
 
@@ -479,32 +492,33 @@ export function AttendanceTable({
             </thead>
             <tbody>
               {filteredEmployees.map((employee, index) => {
-                const totalPoints = getTotalPoints(employee.id)
+                const employeeId = getEmployeeId(employee)
+                const totalPoints = getTotalPoints(employeeId)
                 const totalBonusPoints = daysInMonth.reduce(
-                  (sum, dayInfo) => sum + getBonusPoints(employee.id, dayInfo.day),
+                  (sum, dayInfo) => sum + getBonusPoints(employeeId, dayInfo.day),
                   0,
                 )
 
                 return (
-                  <tr key={employee.id} className="border-b hover:bg-gray-50">
+                  <tr key={employeeId} className="border-b hover:bg-gray-50">
                     <td className="px-3 py-2 border-r sticky left-0 bg-white z-10">{index + 1}</td>
-                    <td className="px-3 py-2 border-r sticky left-12 bg-white z-10 font-mono text-xs">{employee.id}</td>
+                    <td className="px-3 py-2 border-r sticky left-12 bg-white z-10 font-mono text-xs">{getEmployeeId(employee)}</td>
                     <td className="px-3 py-2 border-r sticky left-32 bg-white z-10 font-medium">{employee.name}</td>
                     {/* Editable Title Cell */}
                     <td className="px-3 py-2 border-r sticky left-64 bg-white z-10 text-gray-600">
-                      {editingTitle?.employeeId === employee.id ? (
+                      {editingTitle?.employeeId === employeeId ? (
                         <Input
                           ref={titleInputRef}
                           type="text"
                           value={titleInputValue}
                           onChange={(e) => setTitleInputValue(e.target.value)}
-                          onBlur={() => handleSaveTitle(employee.id)}
-                          onKeyDown={(e) => handleTitleKeyDown(e, employee.id)}
+                          onBlur={() => handleSaveTitle(employeeId)}
+                          onKeyDown={(e) => handleTitleKeyDown(e, employeeId)}
                           className="h-8 text-center p-1"
                         />
                       ) : (
                         <button
-                          onClick={() => handleEditTitle(employee.id, employee.title)}
+                          onClick={() => handleEditTitle(employeeId, employee.title)}
                           className="flex items-center gap-1 mx-auto text-gray-600 hover:text-gray-800"
                         >
                           {employee.title}
@@ -514,8 +528,8 @@ export function AttendanceTable({
                     </td>
 
                     {daysInMonth.map((dayInfo) => {
-                      const record = getAttendanceRecord(employee.id, dayInfo.day)
-                      const bonus = getBonusPoints(employee.id, dayInfo.day)
+                      const record = getAttendanceRecord(employeeId, dayInfo.day)
+                      const bonus = getBonusPoints(employeeId, dayInfo.day)
                       const totalDayPoints = (record?.points || 0) + bonus
                       const isLowPoints = totalDayPoints <= 1
 
@@ -525,7 +539,7 @@ export function AttendanceTable({
                           className={`px-2 py-2 text-center border-r relative group cursor-pointer ${
                             isLowPoints ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
                           }`}
-                          onClick={() => bonus > 0 && showBonusHistory(employee.id, dayInfo.day)}
+                          onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
                         >
                           <div className="flex items-center justify-center gap-1">
                             <span>{totalDayPoints}</span>
@@ -533,7 +547,7 @@ export function AttendanceTable({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleBonusEdit(employee.id, dayInfo.day)
+                                  handleBonusEdit(employeeId, dayInfo.day)
                                 }}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity"
                               >
@@ -562,7 +576,7 @@ export function AttendanceTable({
                     <td className="px-3 py-2 text-center border-r font-semibold">{totalPoints}</td>
                     <td className="px-3 py-2 text-center border-r">
                       <button
-                        onClick={() => handleBonusEdit(employee.id, 1)} // Default to day 1 for monthly bonus
+                        onClick={() => handleBonusEdit(employeeId, 1)} // Default to day 1 for monthly bonus
                         className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
                       >
                         {totalBonusPoints}
@@ -571,7 +585,7 @@ export function AttendanceTable({
                     </td>
                     {/* Editable Commission Cell */}
                     <td className="px-3 py-2 text-center border-r">
-                      {editingCustomCell?.employeeId === employee.id &&
+                      {editingCustomCell?.employeeId === employeeId &&
                       editingCustomCell?.columnKey === "commission" ? (
                         <Input
                           ref={customInputRef}
@@ -584,10 +598,10 @@ export function AttendanceTable({
                         />
                       ) : (
                         <button
-                          onClick={() => handleCustomCellEdit(employee.id, "commission")}
+                          onClick={() => handleCustomCellEdit(employeeId, "commission")}
                           className="text-purple-600 hover:text-purple-800 flex items-center gap-1 mx-auto"
                         >
-                          {getCustomDailyValue(employee.id, daysInMonth[0].dateStr, "commission") || "Nhập"}
+                          {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission") || "Nhập"}
                           <DollarSign className="w-3 h-3" />
                         </button>
                       )}
@@ -595,7 +609,7 @@ export function AttendanceTable({
                     {/* Editable Custom Columns Cells */}
                     {customColumns.map((col) => (
                       <td key={col.key} className="px-3 py-2 text-center border-r">
-                        {editingCustomCell?.employeeId === employee.id && editingCustomCell?.columnKey === col.key ? (
+                        {editingCustomCell?.employeeId === employeeId && editingCustomCell?.columnKey === col.key ? (
                           <Input
                             ref={customInputRef}
                             type="text"
@@ -607,10 +621,10 @@ export function AttendanceTable({
                           />
                         ) : (
                           <button
-                            onClick={() => handleCustomCellEdit(employee.id, col.key)}
+                            onClick={() => handleCustomCellEdit(employeeId, col.key)}
                             className="text-gray-600 hover:text-gray-800 flex items-center gap-1 mx-auto"
                           >
-                            {getCustomDailyValue(employee.id, daysInMonth[0].dateStr, col.key) || "Nhập"}
+                            {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key) || "Nhập"}
                             <PlusSquare className="w-3 h-3" />
                           </button>
                         )}
