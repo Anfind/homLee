@@ -54,48 +54,71 @@ export const getDefaultCheckInSettings = (): CheckInSettings => {
 
 /**
  * Convert UTC timestamp từ máy chấm công sang thời gian VN (UTC+7)
+ * QUAN TRỌNG: Kiểm tra xem hệ thống đã ở VN timezone chưa
  */
 export function convertToVietnamTime(isoString: string): Date {
   const utcDate = new Date(isoString)
   
-  // Sử dụng toLocaleString để convert sang VN timezone chính xác
-  const vnString = utcDate.toLocaleString("sv-SE", {
-    timeZone: "Asia/Ho_Chi_Minh"
-  })
+  // Kiểm tra timezone của hệ thống
+  const systemOffset = utcDate.getTimezoneOffset()
+  const vnOffset = -420 // VN = UTC+7 = -420 minutes
   
-  // vnString format: "2025-03-03 11:36:24"
-  // Convert back to Date object
-  return new Date(vnString)
+  if (systemOffset === vnOffset) {
+    // Hệ thống đã ở VN timezone, không cần convert
+    console.log(`🕐 System already in VN timezone, no conversion needed`)
+    return utcDate
+  } else {
+    // Hệ thống ở timezone khác, cần convert
+    console.log(`🕐 Converting from system TZ (${systemOffset}min) to VN timezone`)
+    const vnString = utcDate.toLocaleString("sv-SE", {
+      timeZone: "Asia/Ho_Chi_Minh"
+    })
+    return new Date(vnString)
+  }
 }
 
 /**
  * Format thời gian VN thành YYYY-MM-DD
+ * Sử dụng hệ thống timezone hiện tại nếu đã là VN
  */
 export function formatVietnamDate(isoString: string): string {
   const utcDate = new Date(isoString)
+  const systemOffset = utcDate.getTimezoneOffset()
   
-  const vnString = utcDate.toLocaleString("sv-SE", {
-    timeZone: "Asia/Ho_Chi_Minh"
-  })
-  
-  // Extract date part: "2025-03-03 11:36:24" -> "2025-03-03"
-  return vnString.split(' ')[0]
+  if (systemOffset === -420) {
+    // Hệ thống đã VN timezone
+    return utcDate.toISOString().split('T')[0]
+  } else {
+    // Convert to VN timezone
+    const vnString = utcDate.toLocaleString("sv-SE", {
+      timeZone: "Asia/Ho_Chi_Minh"
+    })
+    return vnString.split(' ')[0]
+  }
 }
 
 /**
  * Format thời gian VN thành HH:MM
+ * Sử dụng hệ thống timezone hiện tại nếu đã là VN
  */
 export function formatVietnamTime(isoString: string): string {
   const utcDate = new Date(isoString)
+  const systemOffset = utcDate.getTimezoneOffset()
   
-  const vnString = utcDate.toLocaleString("sv-SE", {
-    timeZone: "Asia/Ho_Chi_Minh"
-  })
-  
-  // Extract time part: "2025-03-03 11:36:24" -> "11:36"
-  const timePart = vnString.split(' ')[1]
-  const [hours, minutes] = timePart.split(':')
-  return `${hours}:${minutes}`
+  if (systemOffset === -420) {
+    // Hệ thống đã VN timezone
+    const hours = utcDate.getHours().toString().padStart(2, '0')
+    const minutes = utcDate.getMinutes().toString().padStart(2, '0')
+    return `${hours}:${minutes}`
+  } else {
+    // Convert to VN timezone
+    const vnString = utcDate.toLocaleString("sv-SE", {
+      timeZone: "Asia/Ho_Chi_Minh"
+    })
+    const timePart = vnString.split(' ')[1]
+    const [hours, minutes] = timePart.split(':')
+    return `${hours}:${minutes}`
+  }
 }
 
 /**
