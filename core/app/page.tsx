@@ -195,6 +195,19 @@ export default function Home() {
           setAttendanceRecords(attendanceResult.data)
           console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
           console.log('📋 Sample attendance records:', attendanceResult.data.slice(0, 3))
+          
+          // Debug: Check if employees match attendance records
+          if (attendanceResult.data.length > 0) {
+            const attendanceEmployeeIds = [...new Set(attendanceResult.data.map(r => r.employeeId))]
+            console.log('👥 Attendance Employee IDs:', attendanceEmployeeIds.slice(0, 10))
+            console.log('👥 MongoDB Employee IDs:', mongoEmployees.slice(0, 10).map(e => e.id || e._id))
+            
+            // Check for matches
+            const matches = attendanceEmployeeIds.filter(aId => 
+              mongoEmployees.some(emp => emp.id === aId || emp._id === aId)
+            )
+            console.log(`🔗 Employee ID matches: ${matches.length}/${attendanceEmployeeIds.length}`)
+          }
         } else {
           console.log('❌ Failed to load attendance records:', attendanceResult)
         }
@@ -677,7 +690,7 @@ export default function Home() {
         </div>
 
         {/* Data Status and Attendance Table */}
-        {employees.length === 0 ? (
+        {allEmployees.length === 0 ? (
           <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 rounded-lg p-6 mb-8">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -731,11 +744,23 @@ export default function Home() {
               </div>
             </div>
             <div className="p-6">
+              {/* Debug info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h3 className="font-bold text-blue-800">🔍 DEBUG INFO:</h3>
+                <div className="text-sm text-blue-700">
+                  <div>currentUser: {currentUser?.name} ({currentUser?.role})</div>
+                  <div>allEmployees: {allEmployees.length}</div>
+                  <div>mongoEmployees: {mongoEmployees.length}</div>
+                  <div>attendanceRecords: {attendanceRecords.length}</div>
+                  <div>selectedMonth: {selectedMonth}</div>
+                </div>
+              </div>
+              
               <AttendanceTable
-                employees={employees}
+                employees={allEmployees}
                 attendanceRecords={attendanceRecords}
-                bonusPoints={bonusPoints}
-                customDailyValues={customDailyValues}
+                bonusPoints={[]} // TODO: Load from MongoDB API instead of localStorage
+                customDailyValues={[]} // TODO: Load from MongoDB API instead of localStorage  
                 selectedMonth={selectedMonth}
                 user={currentUser}
                 onBonusPointUpdate={handleBonusPointUpdate}
