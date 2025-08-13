@@ -498,127 +498,162 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Action Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Time Selection Panel */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Thời gian báo cáo</h3>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label htmlFor="month-select" className="block text-sm font-medium text-gray-700 mb-2">
-                  Chọn tháng báo cáo:
-                </label>
-                <input
-                  id="month-select"
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Data Import Panel */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <Download className="w-5 h-5 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Import dữ liệu</h3>
-            </div>
-            <div className="space-y-3">
-              {/* XMLImporter - Uncomment if needed for backup/manual import 
-              <XMLImporter
-                onImport={handleXMLImport}
-                user={currentUser}
-                departments={departments}
-                checkInSettings={checkInSettings}
-              />
-              */}
-              <p className="text-sm text-gray-500 italic">
-                💡 Dữ liệu import hiện được xử lý qua "Đồng Bộ Dữ Liệu" bên dưới với MongoDB
-              </p>
-            </div>
-          </div>
-
-          {/* Data Sync Panel - Only for Admin */}
+        {/* Action Panels - FIXED LAYOUT */}
+        <div className="space-y-6 mb-8">
+          
+          {/* PRIMARY SECTION: Data Sync (Only for Admin) */}
           {currentUser.role === "admin" && (
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Download className="w-5 h-5 text-blue-600" />
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-sm">
+                  <Download className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Đồng bộ dữ liệu từ ZKTeco</h3>
+                <div>
+                  <h2 className="text-xl font-semibold text-blue-900">🔄 Đồng Bộ Dữ Liệu ZKTeco</h2>
+                  <p className="text-sm text-blue-700">Lấy dữ liệu từ máy chấm công và lưu vào MongoDB (CHÍNH)</p>
+                </div>
               </div>
               <DataSyncManager />
             </div>
           )}
 
-          {/* Management Panel */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Settings className="w-5 h-5 text-purple-600" />
+          {/* SECONDARY SECTION: Controls Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            
+            {/* Time Selection Panel */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">📅 Thời Gian Báo Cáo</h3>
+                  <p className="text-xs text-gray-500">Chọn tháng để xem</p>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Quản lý hệ thống</h3>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="month-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Tháng báo cáo:
+                  </label>
+                  <input
+                    id="month-select"
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                  />
+                </div>
+                <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                  📊 Hiển thị: {new Date(selectedMonth + "-01").toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                </div>
+              </div>
             </div>
-            <div className="space-y-3">
-              {currentUser.role === "admin" && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDepartmentManagement(true)}
-                    className="w-full justify-start gap-2"
-                  >
-                    <Building2 className="w-4 h-4" />
-                    Quản lý phòng ban
-                  </Button>
+
+            {/* Management Panel */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">⚙️ Quản Lý Hệ Thống</h3>
+                  <p className="text-xs text-gray-500">Cấu hình và quản lý</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {currentUser.role === "admin" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDepartmentManagement(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <Building2 className="w-4 h-4" />
+                      Quản lý phòng ban
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowEmployeeManagement(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Quản lý nhân sự
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCheckInSettingsManagement(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <Clock className="w-4 h-4" />
+                      Cấu hình giờ làm việc
+                    </Button>
+                  </>
+                )}
+                {currentUser.role === "truongphong" && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowEmployeeManagement(true)}
-                    className="w-full justify-start gap-2"
+                    className="w-full justify-start gap-2 h-10"
                   >
                     <UserPlus className="w-4 h-4" />
-                    Quản lý nhân sự
+                    Quản lý nhân viên
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowCheckInSettingsManagement(true)}
-                    className="w-full justify-start gap-2"
-                  >
-                    <Clock className="w-4 h-4" />
-                    Cấu hình giờ làm việc
-                  </Button>
-                </>
-              )}
-              {currentUser.role === "truongphong" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowEmployeeManagement(true)}
-                  className="w-full justify-start gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Quản lý nhân viên
-                </Button>
-              )}
-              {(currentUser.role === "admin" || currentUser.role === "truongphong") && (
-                <div className="pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 text-center">
-                    Các chức năng quản lý cho {currentUser.role === "admin" ? "quản trị viên" : "trưởng phòng"}
-                  </p>
-                </div>
-              )}
+                )}
+                {(currentUser.role === "admin" || currentUser.role === "truongphong") && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 text-center">
+                      Quyền {currentUser.role === "admin" ? "quản trị viên" : "trưởng phòng"}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Legacy Import Panel - Collapsed by default */}
+            <div className="bg-yellow-50 rounded-xl shadow-sm border border-yellow-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <FileSpreadsheet className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-yellow-800">🔧 Import Khác</h3>
+                  <p className="text-xs text-yellow-600">Dự phòng hoặc thủ công</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="text-sm text-yellow-700 bg-yellow-100 p-3 rounded-lg">
+                  <p className="font-medium mb-1">⚠️ Lưu ý:</p>
+                  <p className="text-xs">Khuyến nghị dùng "Đồng Bộ ZKTeco" ở trên thay vì import thủ công.</p>
+                </div>
+                
+                {/* Uncomment if need legacy import */}
+                {/* 
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-yellow-700 hover:text-yellow-800">
+                    🔽 Hiện tùy chọn import cũ
+                  </summary>
+                  <div className="mt-3 pt-3 border-t border-yellow-200">
+                    <XMLImporter
+                      onImport={handleXMLImport}
+                      user={currentUser}
+                      departments={departments}
+                      checkInSettings={checkInSettings}
+                    />
+                  </div>
+                </details>
+                */}
+                
+                <p className="text-xs text-yellow-600 italic">
+                  💡 Import XML và ZK cũ đã được thay thế bằng DataSync ở trên
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
 
