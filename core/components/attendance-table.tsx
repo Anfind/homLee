@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Search, Download, History, Edit3, DollarSign, PlusSquare } from "lucide-react"
-import type { Employee, AttendanceRecord, BonusPoint, User, CustomDailyValue } from "@/app/page"
+import type { Employee, AttendanceRecord, BonusPoint, CustomDailyValue } from "@/app/page"
+import type { UserType } from "@/components/login-form"
 import * as XLSX from "xlsx"
 
 interface AttendanceTableProps {
@@ -17,7 +18,7 @@ interface AttendanceTableProps {
   bonusPoints: BonusPoint[]
   customDailyValues: CustomDailyValue[]
   selectedMonth: string
-  user: User
+  user: UserType
   onBonusPointUpdate: (employeeId: string, date: string, points: number) => void
   onCustomValueUpdate: (employeeId: string, date: string, columnKey: string, value: string) => void
   onEmployeeUpdate: (employee: Employee) => void
@@ -125,7 +126,17 @@ export function AttendanceTable({
   // Get attendance record for specific employee and date
   const getAttendanceRecord = (employeeId: string, day: number): AttendanceRecord | undefined => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    return attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
+    const record = attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
+    
+    // Debug first few calls
+    if (employeeId === "117" && day <= 5) {
+      console.log(`🔍 Looking for employee ${employeeId} on ${dateStr}:`)
+      console.log(`   - Found record:`, record)
+      console.log(`   - Total attendanceRecords:`, attendanceRecords.length)
+      console.log(`   - Sample records:`, attendanceRecords.slice(0, 2))
+    }
+    
+    return record
   }
 
   // Get bonus points for specific employee and date
@@ -333,10 +344,30 @@ export function AttendanceTable({
           )}
         </div>
 
-        <Button onClick={exportToExcel} className="flex items-center gap-2">
-          <Download className="w-4 h-4" />
-          Xuất Excel
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={exportToExcel} className="flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Xuất Excel
+          </Button>
+          <Button 
+            onClick={() => {
+              console.log(`🔍 DEBUG INFO:`)
+              console.log(`   - selectedMonth: ${selectedMonth}`)
+              console.log(`   - attendanceRecords.length: ${attendanceRecords.length}`)
+              console.log(`   - Sample records:`, attendanceRecords.slice(0, 3))
+              console.log(`   - Looking for employee 117 on 2025-03-04:`, 
+                attendanceRecords.find(r => r.employeeId === "117" && r.date === "2025-03-04"))
+              
+              // Test getAttendanceRecord for March 4th (day 4 of March)
+              const record = getAttendanceRecord("117", 4)
+              console.log(`   - getAttendanceRecord("117", 4):`, record)
+            }}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            🔍 Debug
+          </Button>
+        </div>
       </div>
 
       {/* Attendance Table */}

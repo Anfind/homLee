@@ -161,8 +161,10 @@ export default function Home() {
   const [customDailyValues, setCustomDailyValues] = useLocalStorage<CustomDailyValue[]>("customDailyValues", [])
   const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings) // Changed to useState, load from MongoDB
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    // Test with March 2025 to match sample data
+    return "2025-03"
+    // const now = new Date()
+    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
   const [showEmployeeManagement, setShowEmployeeManagement] = useState(false)
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
@@ -186,6 +188,9 @@ export default function Home() {
         if (attendanceResult.success) {
           setAttendanceRecords(attendanceResult.data)
           console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
+          console.log('📋 Sample attendance records:', attendanceResult.data.slice(0, 3))
+        } else {
+          console.log('❌ Failed to load attendance records:', attendanceResult)
         }
 
         // Load check-in settings from MongoDB
