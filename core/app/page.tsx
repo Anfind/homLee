@@ -156,7 +156,7 @@ export default function Home() {
   const [departments, setDepartments] = useLocalStorage<Department[]>("departments", initialDepartments)
   const [employees, setEmployees] = useLocalStorage<Employee[]>("employees", initialEmployees)
   const [mongoEmployees, setMongoEmployees] = useState<Employee[]>([]) // MongoDB employees
-  const [attendanceRecords, setAttendanceRecords] = useLocalStorage<AttendanceRecord[]>("attendanceRecords", [])
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]) // Changed to useState, load from MongoDB
   const [bonusPoints, setBonusPoints] = useLocalStorage<BonusPoint[]>("bonusPoints", [])
   const [customDailyValues, setCustomDailyValues] = useLocalStorage<CustomDailyValue[]>("customDailyValues", [])
   const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings) // Changed to useState, load from MongoDB
@@ -178,6 +178,14 @@ export default function Home() {
         if (employeesResult.success) {
           setMongoEmployees(employeesResult.data)
           console.log(`✅ Loaded ${employeesResult.data.length} employees from MongoDB`)
+        }
+
+        // Load attendance records from MongoDB for the selected month
+        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+        const attendanceResult = await attendanceResponse.json()
+        if (attendanceResult.success) {
+          setAttendanceRecords(attendanceResult.data)
+          console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
         }
 
         // Load check-in settings from MongoDB
