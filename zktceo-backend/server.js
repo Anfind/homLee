@@ -108,14 +108,18 @@ app.get('/api/attendance/by-date', async (req, res) => {
 
     console.log(`✅ Nhận được yêu cầu lấy dữ liệu từ ngày ${start} đến ${end}`);
 
-    // --- 2. Tạo đối tượng Date để so sánh ---
-    // Đặt giờ về đầu ngày cho ngày bắt đầu
-    const startDate = new Date(start);
-    startDate.setHours(0, 0, 0, 0);
-
-    // Đặt giờ về cuối ngày cho ngày kết thúc để bao gồm tất cả bản ghi trong ngày
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
+    // --- 2. Tạo đối tượng Date để so sánh (VN timezone) ---
+    // Convert input dates to VN timezone for proper comparison
+    const startDate = new Date(start + 'T00:00:00.000+07:00'); // Start of day in VN
+    const endDate = new Date(end + 'T23:59:59.999+07:00');     // End of day in VN
+    
+    console.log(`📅 Filter range VN: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
+    // Convert to UTC for comparison with machine data
+    const startUTC = new Date(startDate.getTime() - 7*60*60*1000); // VN → UTC
+    const endUTC = new Date(endDate.getTime() - 7*60*60*1000);     // VN → UTC
+    
+    console.log(`📅 Filter range UTC: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
 
     const zk = new ZKTeco(deviceIP, devicePort, timeout);
     try {
@@ -125,18 +129,16 @@ app.get('/api/attendance/by-date', async (req, res) => {
         const logs = await zk.getAttendances();
         console.log(`Đã lấy về ${logs.data.length} bản ghi.`);
 
-        // --- 4. Lọc dữ liệu trên server ---
+        // --- 4. Lọc dữ liệu trên server với UTC comparison ---
         console.log(`🔍 DEBUG: Filtering ${logs.data.length} records...`);
-        console.log(`📅 Filter range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
         
         const filteredLogs = logs.data.filter(log => {
-            const recordDate = new Date(log.recordTime);
-            const match = recordDate >= startDate && recordDate <= endDate;
+            const recordDate = new Date(log.recordTime); // This is in UTC from machine
+            const match = recordDate >= startUTC && recordDate <= endUTC;
             
             // Debug first few records
             if (logs.data.indexOf(log) < 5) {
-                const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
-                console.log(`   Record ${logs.data.indexOf(log)}: ${log.recordTime} (VN: ${vnTime.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
+                console.log(`   Record ${logs.data.indexOf(log)}: ${recordDate.toString()} (UTC: ${recordDate.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
             }
             
             return match;

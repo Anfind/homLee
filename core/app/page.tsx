@@ -5,7 +5,6 @@ import { AttendanceTable } from "@/components/attendance-table"
 import { LoginForm, UserType } from "@/components/login-form"
 import { Header } from "@/components/header"
 import { XMLImporter } from "@/components/xml-importer"
-import { ZKDataImporter } from "@/components/zk-data-importer"
 import { EmployeeManagement } from "@/components/employee-management"
 import { DepartmentManagement } from "@/components/department-management"
 import { CheckInSettingsManagement } from "@/components/check-in-settings-management"
@@ -160,10 +159,7 @@ export default function Home() {
   const [attendanceRecords, setAttendanceRecords] = useLocalStorage<AttendanceRecord[]>("attendanceRecords", [])
   const [bonusPoints, setBonusPoints] = useLocalStorage<BonusPoint[]>("bonusPoints", [])
   const [customDailyValues, setCustomDailyValues] = useLocalStorage<CustomDailyValue[]>("customDailyValues", [])
-  const [checkInSettings, setCheckInSettings] = useLocalStorage<CheckInSettings>(
-    "checkInSettings",
-    defaultCheckInSettings,
-  )
+  const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings) // Changed to useState, load from MongoDB
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
@@ -172,25 +168,34 @@ export default function Home() {
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
   const [showCheckInSettingsManagement, setShowCheckInSettingsManagement] = useState(false)
 
-  // Load MongoDB employees on component mount
+  // Load MongoDB employees and attendance records on component mount
   useEffect(() => {
-    const fetchMongoEmployees = async () => {
+    const fetchMongoData = async () => {
       try {
-        const response = await fetch('/api/employees')
-        const result = await response.json()
-        if (result.success) {
-          setMongoEmployees(result.data)
-          console.log(`✅ Loaded ${result.data.length} employees from MongoDB`)
+        // Load employees from MongoDB
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setMongoEmployees(employeesResult.data)
+          console.log(`✅ Loaded ${employeesResult.data.length} employees from MongoDB`)
+        }
+
+        // Load check-in settings from MongoDB
+        const settingsResponse = await fetch('/api/check-in-settings')
+        const settingsResult = await settingsResponse.json()
+        if (settingsResult.success) {
+          setCheckInSettings(settingsResult.data)
+          console.log(`✅ Loaded check-in settings from MongoDB`)
         }
       } catch (error) {
-        console.error('Error loading MongoDB employees:', error)
+        console.error('Error loading MongoDB data:', error)
       }
     }
     
     if (currentUser) {
-      fetchMongoEmployees()
+      fetchMongoData()
     }
-  }, [currentUser])
+  }, [currentUser, selectedMonth])
 
   const handleLogin = (userData: UserType) => {
     setCurrentUser(userData)
@@ -248,49 +253,6 @@ export default function Home() {
       })
       return newRecords
     })
-  }
-
-  // NEW: Handle ZK Data Import from attendance machine
-  const handleZKImport = (records: AttendanceRecord[], newEmployees: Employee[]) => {
-    console.log(`🚀 Importing ${newEmployees.length} employees and ${records.length} attendance records from ZK device`)
-    
-    // Update employee list (merge with existing, avoid duplicates)
-    setEmployees((prevEmployees) => {
-      const updatedEmployees = [...prevEmployees]
-
-      newEmployees.forEach((newEmp) => {
-        const existingIndex = updatedEmployees.findIndex((emp) => emp.id === newEmp.id)
-        if (existingIndex >= 0) {
-          // Update existing employee info
-          updatedEmployees[existingIndex] = { ...updatedEmployees[existingIndex], ...newEmp }
-        } else {
-          // Add new employee
-          updatedEmployees.push(newEmp)
-        }
-      })
-
-      return updatedEmployees
-    })
-
-    // Update attendance records (replace for imported date range)
-    setAttendanceRecords((prev) => {
-      // Keep existing records that are not in the new import
-      const existingRecords = prev.filter(record => {
-        return !records.some(newRecord => 
-          newRecord.employeeId === record.employeeId && 
-          newRecord.date === record.date
-        )
-      })
-      
-      // Merge with new records
-      const mergedRecords = [...existingRecords, ...records]
-      
-      console.log(`✅ Updated attendance: ${prev.length} → ${mergedRecords.length} records`)
-      return mergedRecords
-    })
-
-    // Show success message
-    console.log(`✅ ZK Import completed: ${newEmployees.length} employees, ${records.length} attendance records`)
   }
 
   const handleBonusPointUpdate = (employeeId: string, date: string, points: number) => {
@@ -571,16 +533,17 @@ export default function Home() {
               <h3 className="text-lg font-semibold text-gray-900">Import dữ liệu</h3>
             </div>
             <div className="space-y-3">
-              <ZKDataImporter
-                onImport={handleZKImport}
-                checkInSettings={checkInSettings}
-              />
+              {/* XMLImporter - Uncomment if needed for backup/manual import 
               <XMLImporter
                 onImport={handleXMLImport}
                 user={currentUser}
                 departments={departments}
                 checkInSettings={checkInSettings}
               />
+              */}
+              <p className="text-sm text-gray-500 italic">
+                💡 Dữ liệu import hiện được xử lý qua "Đồng Bộ Dữ Liệu" bên dưới với MongoDB
+              </p>
             </div>
           </div>
 
