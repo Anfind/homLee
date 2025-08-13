@@ -5,6 +5,7 @@ import { AttendanceRecord } from '@/lib/mongodb/models'
 // GET /api/attendance - Get attendance records
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 /api/attendance GET request received')
     await connectDB()
     
     const searchParams = request.nextUrl.searchParams
@@ -13,6 +14,8 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const month = searchParams.get('month') // YYYY-MM format
+    
+    console.log('📝 Query params:', { employeeId, date, startDate, endDate, month })
     
     let query: any = {}
     
@@ -28,9 +31,14 @@ export async function GET(request: NextRequest) {
       query.date = { $regex: `^${month}` }
     }
     
+    console.log('🔍 MongoDB query:', query)
+    
+    // Remove populate since employeeId is string, not ObjectId reference
     const records = await AttendanceRecord.find(query)
-      .populate('employeeId', 'name title department')
       .sort({ date: -1, employeeId: 1 })
+    
+    console.log(`✅ Found ${records.length} attendance records`)
+    console.log('📋 Sample records:', records.slice(0, 2))
     
     return NextResponse.json({
       success: true,

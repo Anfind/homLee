@@ -161,10 +161,10 @@ export default function Home() {
   const [customDailyValues, setCustomDailyValues] = useLocalStorage<CustomDailyValue[]>("customDailyValues", [])
   const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings) // Changed to useState, load from MongoDB
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    // Test with March 2025 to match sample data
-    return "2025-03"
-    // const now = new Date()
-    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    // Use current month to test with real data  
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    // Test with March 2025 to match sample data: return "2025-03"
   })
   const [showEmployeeManagement, setShowEmployeeManagement] = useState(false)
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
@@ -183,8 +183,13 @@ export default function Home() {
         }
 
         // Load attendance records from MongoDB for the selected month
+        console.log(`🔄 Fetching attendance records for month: ${selectedMonth}`)
         const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+        console.log(`📡 Attendance API response status:`, attendanceResponse.status)
+        
         const attendanceResult = await attendanceResponse.json()
+        console.log(`📋 Attendance API result:`, attendanceResult)
+        
         if (attendanceResult.success) {
           setAttendanceRecords(attendanceResult.data)
           console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
