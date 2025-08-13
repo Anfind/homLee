@@ -108,18 +108,19 @@ app.get('/api/attendance/by-date', async (req, res) => {
 
     console.log(`✅ Nhận được yêu cầu lấy dữ liệu từ ngày ${start} đến ${end}`);
 
-    // --- 2. Tạo đối tượng Date để so sánh (VN timezone) ---
-    // Convert input dates to VN timezone for proper comparison
-    const startDate = new Date(start + 'T00:00:00.000+07:00'); // Start of day in VN
-    const endDate = new Date(end + 'T23:59:59.999+07:00');     // End of day in VN
+    // --- 2. Tạo đối tượng Date để so sánh (CHUYÊN GIA FIX: Đúng logic VN timezone) ---
+    // User input "2025-03-03" means they want all records for 2025-03-03 in VN timezone
+    // VN day 2025-03-03 = from 2025-03-02T17:00:00.000Z to 2025-03-03T16:59:59.999Z (UTC)
     
-    console.log(`📅 Filter range VN: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    const startVN = new Date(start + 'T00:00:00.000+07:00'); // Start of VN day
+    const endVN = new Date(end + 'T23:59:59.999+07:00');     // End of VN day
     
-    // Convert to UTC for comparison with machine data
-    const startUTC = new Date(startDate.getTime() - 7*60*60*1000); // VN → UTC
-    const endUTC = new Date(endDate.getTime() - 7*60*60*1000);     // VN → UTC
+    // Convert VN times to UTC for comparison with machine data (machine data is UTC)
+    const startUTC = new Date(startVN.getTime());  // VN time already converted to UTC by JS
+    const endUTC = new Date(endVN.getTime());      // VN time already converted to UTC by JS
     
-    console.log(`📅 Filter range UTC: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
+    console.log(`📅 Filter VN day: ${start} 00:00 to ${end} 23:59 (VN timezone)`);
+    console.log(`📅 Filter UTC range: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
 
     const zk = new ZKTeco(deviceIP, devicePort, timeout);
     try {
@@ -129,7 +130,7 @@ app.get('/api/attendance/by-date', async (req, res) => {
         const logs = await zk.getAttendances();
         console.log(`Đã lấy về ${logs.data.length} bản ghi.`);
 
-        // --- 4. Lọc dữ liệu trên server với UTC comparison ---
+        // --- 4. Lọc dữ liệu trên server với UTC comparison (FIXED) ---
         console.log(`🔍 DEBUG: Filtering ${logs.data.length} records...`);
         
         const filteredLogs = logs.data.filter(log => {
@@ -138,7 +139,8 @@ app.get('/api/attendance/by-date', async (req, res) => {
             
             // Debug first few records
             if (logs.data.indexOf(log) < 5) {
-                console.log(`   Record ${logs.data.indexOf(log)}: ${recordDate.toString()} (UTC: ${recordDate.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
+                const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
+                console.log(`   Record ${logs.data.indexOf(log)}: ${recordDate.toISOString()} (VN: ${vnTime.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
             }
             
             return match;
