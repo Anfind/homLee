@@ -198,17 +198,20 @@ app.get('/api/attendance/by-date', async (req, res) => {
         const logs = await zk.getAttendances();
         console.log(`📊 Đã lấy về ${logs.data.length} bản ghi.`);
 
-        // --- 4. Lọc dữ liệu trên server với UTC comparison (FIXED) ---
+        // --- 4. Lọc dữ liệu trên server với UTC comparison (ENHANCED DEBUG) ---
         console.log(`🔍 DEBUG: Filtering ${logs.data.length} records...`);
         
         const filteredLogs = logs.data.filter(log => {
             const recordDate = new Date(log.recordTime); // This is in UTC from machine
             const match = recordDate >= startUTC && recordDate <= endUTC;
             
-            // Debug first few records
-            if (logs.data.indexOf(log) < 5) {
+            // Debug first few records AND records around filter range
+            const recordIndex = logs.data.indexOf(log);
+            if (recordIndex < 5 || 
+                (recordDate.getTime() >= startUTC.getTime() - 24*60*60*1000 && 
+                 recordDate.getTime() <= endUTC.getTime() + 24*60*60*1000)) {
                 const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
-                console.log(`   Record ${logs.data.indexOf(log)}: ${recordDate.toISOString()} (VN: ${vnTime.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
+                console.log(`   Record ${recordIndex}: ${recordDate.toISOString()} (VN: ${vnTime.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
             }
             
             return match;
@@ -494,7 +497,7 @@ app.get('/api/attendance/latest', async (req, res) => {
         // Get latest 20 records
         const latestRecords = sortedLogs.slice(0, 20);
         
-        // Group by date to see date range
+        // Group by date to see date range (FIXED timezone conversion)
         const dateStats = {};
         logs.data.forEach(record => {
             const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
@@ -502,13 +505,22 @@ app.get('/api/attendance/latest', async (req, res) => {
             dateStats[dateStr] = (dateStats[dateStr] || 0) + 1;
         });
         
-        // Get earliest and latest dates
-        const allDates = Object.keys(dateStats).sort();
-        const earliestDate = allDates[0];
-        const latestDate = allDates[allDates.length - 1];
+        // Get earliest and latest dates (FIXED: Get from actual data, not dateStats)
+        const times = logs.data.map(record => new Date(record.recordTime).getTime());
+        const oldestRecord = new Date(Math.min(...times));
+        const newestRecord = new Date(Math.max(...times));
+        
+        // Convert to VN timezone for display
+        const oldestVN = new Date(oldestRecord.getTime() + 7*60*60*1000);
+        const newestVN = new Date(newestRecord.getTime() + 7*60*60*1000);
+        
+        const earliestDate = oldestVN.toISOString().split('T')[0];
+        const latestDate = newestVN.toISOString().split('T')[0];
         
         console.log(`📊 Total records: ${logs.data.length}`);
         console.log(`📅 Date range: ${earliestDate} to ${latestDate}`);
+        console.log(`📅 Oldest record: ${oldestRecord.toISOString()} (VN: ${oldestVN.toISOString()})`);
+        console.log(`📅 Newest record: ${newestRecord.toISOString()} (VN: ${newestVN.toISOString()})`);
         console.log(`📋 Latest 20 records:`);
         latestRecords.forEach((record, i) => {
             const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
