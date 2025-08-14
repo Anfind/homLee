@@ -482,12 +482,79 @@ app.get('/api/device/info', async (req, res) => {
     }
 });
 
+// =======================================================================
+// API DEBUG: KIỂM TRA DỮ LIỆU GẦN NHẤT
+// =======================================================================
+app.get('/api/attendance/latest', async (req, res) => {
+    console.log('🔍 DEBUG: Checking latest attendance records...');
+    const zk = new ZKTeco(deviceIP, devicePort, timeout);
+    try {
+        await zk.createSocket();
+        const logs = await zk.getAttendances();
+        
+        // Sort by recordTime descending to get latest records
+        const sortedLogs = logs.data.sort((a, b) => new Date(b.recordTime) - new Date(a.recordTime));
+        
+        // Get latest 20 records
+        const latestRecords = sortedLogs.slice(0, 20);
+        
+        // Group by date to see date range
+        const dateStats = {};
+        logs.data.forEach(record => {
+            const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
+            const dateStr = vnTime.toISOString().split('T')[0];
+            dateStats[dateStr] = (dateStats[dateStr] || 0) + 1;
+        });
+        
+        // Get earliest and latest dates
+        const allDates = Object.keys(dateStats).sort();
+        const earliestDate = allDates[0];
+        const latestDate = allDates[allDates.length - 1];
+        
+        console.log(`📊 Total records: ${logs.data.length}`);
+        console.log(`📅 Date range: ${earliestDate} to ${latestDate}`);
+        console.log(`📋 Latest 20 records:`);
+        latestRecords.forEach((record, i) => {
+            const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
+            console.log(`   ${i+1}. ID: ${record.deviceUserId}, Time: ${vnTime.toISOString()}`);
+        });
+
+        await zk.disconnect();
+        
+        res.json({
+            success: true,
+            totalRecords: logs.data.length,
+            dateRange: {
+                earliest: earliestDate,
+                latest: latestDate
+            },
+            latestRecords: latestRecords.map(record => ({
+                deviceUserId: record.deviceUserId,
+                recordTime: record.recordTime,
+                vnTime: new Date(new Date(record.recordTime).getTime() + 7*60*60*1000).toISOString()
+            })),
+            dateStats: Object.keys(dateStats).length > 50 ? 
+                `Too many dates to display (${Object.keys(dateStats).length} unique dates)` :
+                dateStats
+        });
+        
+    } catch (error) {
+        console.error('❌ Error checking latest records:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error checking latest records',
+            error: error.message
+        });
+    }
+});
+
 // Khởi chạy server
 app.listen(port, () => {
     console.log(`Backend server đang chạy tại http://localhost:${port}`);
     console.log(`🚀 API Endpoints:`);
     console.log(`   • http://localhost:${port}/api/attendance - Lấy tất cả dữ liệu chấm công`);
     console.log(`   • http://localhost:${port}/api/attendance/by-date?start=YYYY-MM-DD&end=YYYY-MM-DD - Lấy dữ liệu theo ngày`);
+    console.log(`   • http://localhost:${port}/api/attendance/latest - Kiểm tra dữ liệu gần nhất (DEBUG)`);
     console.log(`   • http://localhost:${port}/api/users - Lấy danh sách nhân viên`);
     console.log(`   • http://localhost:${port}/api/device/info - Kiểm tra thông tin thiết bị (DEBUG)`);
     console.log(`   • http://localhost:${port}/api/health - Health check`);
