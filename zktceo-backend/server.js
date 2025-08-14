@@ -177,16 +177,12 @@ app.get('/api/attendance/by-date', async (req, res) => {
 
     console.log(`✅ Nhận được yêu cầu lấy dữ liệu từ ngày ${start} đến ${end}`);
 
-    // --- 2. Tạo đối tượng Date để so sánh (CHUYÊN GIA FIX: Đúng logic VN timezone) ---
-    // User input "2025-03-03" means they want all records for 2025-03-03 in VN timezone
-    // VN day 2025-03-03 = from 2025-03-02T17:00:00.000Z to 2025-03-03T16:59:59.999Z (UTC)
+    // --- 2. Tạo đối tượng Date để so sánh (SIMPLE & CORRECT) ---
+    // Convert VN date to UTC range for filtering
+    // VN date 2025-07-07 = UTC 2025-07-06T17:00:00.000Z to 2025-07-07T16:59:59.999Z
     
-    const startVN = new Date(start + 'T00:00:00.000+07:00'); // Start of VN day
-    const endVN = new Date(end + 'T23:59:59.999+07:00');     // End of VN day
-    
-    // Convert VN times to UTC for comparison with machine data (machine data is UTC)
-    const startUTC = new Date(startVN.getTime());  // VN time already converted to UTC by JS
-    const endUTC = new Date(endVN.getTime());      // VN time already converted to UTC by JS
+    const startUTC = new Date(start + 'T00:00:00+07:00'); // This automatically converts VN to UTC
+    const endUTC = new Date(end + 'T23:59:59.999+07:00');   // This automatically converts VN to UTC
     
     console.log(`📅 Filter VN day: ${start} 00:00 to ${end} 23:59 (VN timezone)`);
     console.log(`📅 Filter UTC range: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
