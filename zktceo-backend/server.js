@@ -177,15 +177,30 @@ app.get('/api/attendance/by-date', async (req, res) => {
 
     console.log(`✅ Nhận được yêu cầu lấy dữ liệu từ ngày ${start} đến ${end}`);
 
-    // --- 2. Tạo đối tượng Date để so sánh (SIMPLE & CORRECT) ---
+    // --- 2. Tạo đối tượng Date để so sánh (COMPLETELY FIXED TIMEZONE) ---
     // Convert VN date to UTC range for filtering
-    // VN date 2025-07-07 = UTC 2025-07-06T17:00:00.000Z to 2025-07-07T16:59:59.999Z
+    // The key issue: We need to create proper UTC Date objects for comparison
     
-    const startUTC = new Date(start + 'T00:00:00+07:00'); // This automatically converts VN to UTC
-    const endUTC = new Date(end + 'T23:59:59.999+07:00');   // This automatically converts VN to UTC
+    // Create VN start date (start of day in VN = 00:00 VN time)
+    const startYear = parseInt(start.split('-')[0]);
+    const startMonth = parseInt(start.split('-')[1]) - 1; // Month is 0-indexed
+    const startDay = parseInt(start.split('-')[2]);
+    
+    // Create VN end date (end of day in VN = 23:59:59.999 VN time)
+    const endYear = parseInt(end.split('-')[0]);
+    const endMonth = parseInt(end.split('-')[1]) - 1;
+    const endDay = parseInt(end.split('-')[2]);
+    
+    // Create Date objects in UTC but representing VN times
+    // VN 00:00 = UTC 17:00 previous day (VN = UTC + 7)
+    // VN 23:59 = UTC 16:59 same day
+    const startUTC = new Date(Date.UTC(startYear, startMonth, startDay, 0, 0, 0, 0) - 7*60*60*1000);
+    const endUTC = new Date(Date.UTC(endYear, endMonth, endDay, 23, 59, 59, 999) - 7*60*60*1000);
     
     console.log(`📅 Filter VN day: ${start} 00:00 to ${end} 23:59 (VN timezone)`);
     console.log(`📅 Filter UTC range: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
+    console.log(`📅 DEBUG: start components: ${startYear}-${startMonth+1}-${startDay}`);
+    console.log(`📅 DEBUG: end components: ${endYear}-${endMonth+1}-${endDay}`);
 
     const zk = new ZKTeco(deviceIP, devicePort, timeout);
     try {
@@ -198,24 +213,36 @@ app.get('/api/attendance/by-date', async (req, res) => {
         const logs = await zk.getAttendances();
         console.log(`📊 Đã lấy về ${logs.data.length} bản ghi.`);
 
-        // --- 4. Lọc dữ liệu trên server với UTC comparison (ENHANCED DEBUG) ---
+        // --- 4. Lọc dữ liệu trên server với UTC comparison (SUPER DEBUG) ---
         console.log(`🔍 DEBUG: Filtering ${logs.data.length} records...`);
+        console.log(`🔍 DEBUG: Filter range UTC: ${startUTC.getTime()} to ${endUTC.getTime()}`);
+        
+        // Show some sample records with their timestamps
+        console.log(`🔍 DEBUG: Sample records around filter range:`);
+        logs.data.slice(0, 10).forEach((record, i) => {
+            const recordDate = new Date(record.recordTime);
+            const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
+            const isInRange = recordDate >= startUTC && recordDate <= endUTC;
+            console.log(`   Sample ${i}: UTC ${recordDate.toISOString()} (${recordDate.getTime()}) VN ${vnTime.toISOString()} → ${isInRange ? 'MATCH' : 'SKIP'}`);
+        });
         
         const filteredLogs = logs.data.filter(log => {
             const recordDate = new Date(log.recordTime); // This is in UTC from machine
             const match = recordDate >= startUTC && recordDate <= endUTC;
-            
-            // Debug first few records AND records around filter range
-            const recordIndex = logs.data.indexOf(log);
-            if (recordIndex < 5 || 
-                (recordDate.getTime() >= startUTC.getTime() - 24*60*60*1000 && 
-                 recordDate.getTime() <= endUTC.getTime() + 24*60*60*1000)) {
-                const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
-                console.log(`   Record ${recordIndex}: ${recordDate.toISOString()} (VN: ${vnTime.toISOString()}) → ${match ? 'MATCH' : 'SKIP'}`);
-            }
-            
             return match;
         });
+        
+        console.log(`🔍 DEBUG: After filter - found ${filteredLogs.length} matching records`);
+        
+        // Show first few matching records if any
+        if (filteredLogs.length > 0) {
+            console.log(`🔍 DEBUG: First few matching records:`);
+            filteredLogs.slice(0, 5).forEach((record, i) => {
+                const recordDate = new Date(record.recordTime);
+                const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
+                console.log(`   Match ${i}: UTC ${recordDate.toISOString()} VN ${vnTime.toISOString()}`);
+            });
+        }
 
         console.log(`✅ Lọc thành công! Tìm thấy ${filteredLogs.length} bản ghi phù hợp.`);
         
