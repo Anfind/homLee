@@ -177,30 +177,36 @@ app.get('/api/attendance/by-date', async (req, res) => {
 
     console.log(`✅ Nhận được yêu cầu lấy dữ liệu từ ngày ${start} đến ${end}`);
 
-    // --- 2. Tạo đối tượng Date để so sánh (COMPLETELY FIXED TIMEZONE) ---
-    // Convert VN date to UTC range for filtering
-    // The key issue: We need to create proper UTC Date objects for comparison
+    // --- 2. Tạo đối tượng Date để so sánh (TIMEZONE LOGIC CORRECTED) ---
+    // LOGIC: Muốn filter theo ngày VN, cần convert ngày VN sang UTC để so sánh
+    // VN timezone = UTC + 7 hours
+    // VN 00:00 = UTC 17:00 ngày trước
+    // VN 23:59 = UTC 16:59 cùng ngày
     
-    // Create VN start date (start of day in VN = 00:00 VN time)
+    // Parse input dates
     const startYear = parseInt(start.split('-')[0]);
     const startMonth = parseInt(start.split('-')[1]) - 1; // Month is 0-indexed
     const startDay = parseInt(start.split('-')[2]);
     
-    // Create VN end date (end of day in VN = 23:59:59.999 VN time)
     const endYear = parseInt(end.split('-')[0]);
     const endMonth = parseInt(end.split('-')[1]) - 1;
     const endDay = parseInt(end.split('-')[2]);
     
-    // Create Date objects in UTC but representing VN times
-    // VN 00:00 = UTC 17:00 previous day (VN = UTC + 7)
-    // VN 23:59 = UTC 16:59 same day
-    const startUTC = new Date(Date.UTC(startYear, startMonth, startDay, 0, 0, 0, 0) - 7*60*60*1000);
-    const endUTC = new Date(Date.UTC(endYear, endMonth, endDay, 23, 59, 59, 999) - 7*60*60*1000);
+    // Create VN dates first, then convert to UTC for filtering
+    // VN start: 2025-07-01 00:00 VN time
+    const vnStartDate = new Date(startYear, startMonth, startDay, 0, 0, 0, 0);
+    // VN end: 2025-07-01 23:59 VN time  
+    const vnEndDate = new Date(endYear, endMonth, endDay, 23, 59, 59, 999);
     
-    console.log(`📅 Filter VN day: ${start} 00:00 to ${end} 23:59 (VN timezone)`);
-    console.log(`📅 Filter UTC range: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
-    console.log(`📅 DEBUG: start components: ${startYear}-${startMonth+1}-${startDay}`);
-    console.log(`📅 DEBUG: end components: ${endYear}-${endMonth+1}-${endDay}`);
+    // Convert VN time to UTC by subtracting 7 hours (VN = UTC + 7)
+    const startUTC = new Date(vnStartDate.getTime() - 7*60*60*1000);
+    const endUTC = new Date(vnEndDate.getTime() - 7*60*60*1000);
+    
+    console.log(`📅 Filter request: VN dates ${start} to ${end}`);
+    console.log(`📅 VN time range: ${vnStartDate.toISOString()} to ${vnEndDate.toISOString()}`);
+    console.log(`📅 UTC filter range: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
+    console.log(`📅 DEBUG: VN start components: ${startYear}-${startMonth+1}-${startDay}`);
+    console.log(`📅 DEBUG: VN end components: ${endYear}-${endMonth+1}-${endDay}`);
 
     const zk = new ZKTeco(deviceIP, devicePort, timeout);
     try {
