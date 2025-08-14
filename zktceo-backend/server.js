@@ -213,22 +213,97 @@ app.get('/api/attendance/by-date', async (req, res) => {
         const logs = await zk.getAttendances();
         console.log(`📊 Đã lấy về ${logs.data.length} bản ghi.`);
 
-        // --- 4. Lọc dữ liệu trên server với UTC comparison (SUPER DEBUG) ---
+        // --- 4. SUPER DEBUG: Analyze all data first ---
         console.log(`🔍 DEBUG: Filtering ${logs.data.length} records...`);
         console.log(`🔍 DEBUG: Filter range UTC: ${startUTC.getTime()} to ${endUTC.getTime()}`);
         
-        // Show some sample records with their timestamps
-        console.log(`🔍 DEBUG: Sample records around filter range:`);
-        logs.data.slice(0, 10).forEach((record, i) => {
+        // First, analyze the actual data distribution
+        const dateAnalysis = {};
+        const invalidDates = [];
+        
+        logs.data.forEach((record, index) => {
+            const recordDate = new Date(record.recordTime);
+            const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
+            const dateStr = vnTime.toISOString().split('T')[0];
+            
+            // Check for invalid dates (like year 2000)
+            if (vnTime.getFullYear() < 2020 || vnTime.getFullYear() > 2030) {
+                invalidDates.push({
+                    index,
+                    recordTime: record.recordTime,
+                    utc: recordDate.toISOString(),
+                    vn: vnTime.toISOString(),
+                    year: vnTime.getFullYear()
+                });
+            }
+            
+            dateAnalysis[dateStr] = (dateAnalysis[dateStr] || 0) + 1;
+        });
+        
+        console.log(`🔍 DEBUG: Found ${invalidDates.length} records with suspicious dates (year < 2020 or > 2030)`);
+        if (invalidDates.length > 0) {
+            console.log(`🔍 DEBUG: Invalid date samples:`);
+            invalidDates.slice(0, 5).forEach((record, i) => {
+                console.log(`   Invalid ${i}: ${record.utc} (VN: ${record.vn}) - Year: ${record.year}`);
+            });
+        }
+        
+        // Show recent dates from analysis
+        const sortedDates = Object.keys(dateAnalysis).sort();
+        const recentDates = sortedDates.slice(-10);
+        console.log(`🔍 DEBUG: Most recent 10 dates in data:`);
+        recentDates.forEach(date => {
+            console.log(`   ${date}: ${dateAnalysis[date]} records`);
+        });
+        
+        // Show some sample records from July 2025
+        console.log(`🔍 DEBUG: Looking for July 2025 records specifically:`);
+        const julyRecords = logs.data.filter(record => {
+            const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
+            const dateStr = vnTime.toISOString().split('T')[0];
+            return dateStr.startsWith('2025-07');
+        });
+        console.log(`🔍 DEBUG: Found ${julyRecords.length} records in July 2025`);
+        if (julyRecords.length > 0) {
+            julyRecords.slice(0, 5).forEach((record, i) => {
+                const recordDate = new Date(record.recordTime);
+                const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
+                console.log(`   July ${i}: UTC ${recordDate.toISOString()} VN ${vnTime.toISOString()}`);
+            });
+        }
+        
+        // Show sample records around filter range (excluding invalid dates)
+        console.log(`🔍 DEBUG: Sample valid records for comparison:`);
+        const validRecords = logs.data.filter(record => {
+            const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
+            return vnTime.getFullYear() >= 2020 && vnTime.getFullYear() <= 2030;
+        });
+        validRecords.slice(0, 10).forEach((record, i) => {
             const recordDate = new Date(record.recordTime);
             const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
             const isInRange = recordDate >= startUTC && recordDate <= endUTC;
             console.log(`   Sample ${i}: UTC ${recordDate.toISOString()} (${recordDate.getTime()}) VN ${vnTime.toISOString()} → ${isInRange ? 'MATCH' : 'SKIP'}`);
         });
         
+        // Filter with additional validation for reasonable dates
         const filteredLogs = logs.data.filter(log => {
             const recordDate = new Date(log.recordTime); // This is in UTC from machine
+            const vnTime = new Date(recordDate.getTime() + 7*60*60*1000);
+            
+            // Skip obviously invalid dates (device clock issues)
+            if (vnTime.getFullYear() < 2020 || vnTime.getFullYear() > 2030) {
+                return false;
+            }
+            
             const match = recordDate >= startUTC && recordDate <= endUTC;
+            
+            // Extra debug for July records
+            if (vnTime.toISOString().startsWith('2025-07')) {
+                console.log(`   🔍 July record: UTC ${recordDate.toISOString()} (${recordDate.getTime()}) VN ${vnTime.toISOString()}`);
+                console.log(`       Filter range: ${startUTC.getTime()} to ${endUTC.getTime()}`);
+                console.log(`       Match result: ${match} (${recordDate.getTime()} >= ${startUTC.getTime()} && ${recordDate.getTime()} <= ${endUTC.getTime()})`);
+            }
+            
             return match;
         });
         
