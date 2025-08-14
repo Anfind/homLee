@@ -154,24 +154,67 @@ export function AttendanceTable({
   // Get bonus points for specific employee and date
   const getBonusPoints = (employeeId: string, day: number): number => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    const bonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    
+    // Find the employee to get both possible IDs
+    const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
+    
+    // Try to find bonus points with current employeeId first
+    let bonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    
+    // If not found and employee has alternative ID, try with that
+    if (!bonus && employee) {
+      const altId = employee.id !== employeeId ? employee.id : employee._id
+      if (altId && altId !== employeeId) {
+        bonus = bonusPoints.find((bp) => bp.employeeId === altId && bp.date === dateStr)
+      }
+    }
+    
     return bonus?.points || 0
   }
 
   // Get custom daily value for specific employee, date, and column key
   const getCustomDailyValue = (employeeId: string, dateStr: string, columnKey: string): string => {
-    const customValue = customDailyValues.find(
+    // Find the employee to get both possible IDs
+    const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
+    
+    // Try to find custom value with current employeeId first
+    let customValue = customDailyValues.find(
       (cdv) => cdv.employeeId === employeeId && cdv.date === dateStr && cdv.columnKey === columnKey,
     )
+    
+    // If not found and employee has alternative ID, try with that
+    if (!customValue && employee) {
+      const altId = employee.id !== employeeId ? employee.id : employee._id
+      if (altId && altId !== employeeId) {
+        customValue = customDailyValues.find(
+          (cdv) => cdv.employeeId === altId && cdv.date === dateStr && cdv.columnKey === columnKey,
+        )
+      }
+    }
+    
     return customValue?.value || ""
   }
 
   // Get bonus history for specific employee and date
   const getBonusHistory = (employeeId: string, day: number): BonusPoint[] => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    return bonusPoints
-      .filter((bp) => bp.employeeId === employeeId && bp.date === dateStr)
-      .sort((a, b) => new Date(b.editedAt).getTime() - new Date(a.editedAt).getTime())
+    
+    // Find the employee to get both possible IDs
+    const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
+    
+    // Get bonus points for current employeeId
+    let bonusHistory = bonusPoints.filter((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    
+    // If employee has alternative ID, also get bonus points for that ID
+    if (employee) {
+      const altId = employee.id !== employeeId ? employee.id : employee._id
+      if (altId && altId !== employeeId) {
+        const altBonusHistory = bonusPoints.filter((bp) => bp.employeeId === altId && bp.date === dateStr)
+        bonusHistory = [...bonusHistory, ...altBonusHistory]
+      }
+    }
+    
+    return bonusHistory.sort((a, b) => new Date(b.editedAt).getTime() - new Date(a.editedAt).getTime())
   }
 
   // Calculate total points for employee in month

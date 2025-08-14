@@ -100,52 +100,52 @@ const initialDepartments: Department[] = [
 // NEW: Default check-in settings for each day of the week with shifts
 const defaultCheckInSettings: CheckInSettings = {
   0: {
-    // Sunday
+    // Sunday - Special timing
     shifts: [
-      { id: "sun-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "sun-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "sun-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "08:45", points: 1 },
+      { id: "sun-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:45", points: 1 },
     ],
   },
   1: {
     // Monday
     shifts: [
-      { id: "mon-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "mon-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "mon-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "mon-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   2: {
     // Tuesday
     shifts: [
-      { id: "tue-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "tue-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "tue-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "tue-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   3: {
     // Wednesday
     shifts: [
-      { id: "wed-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "wed-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "wed-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "wed-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   4: {
     // Thursday
     shifts: [
-      { id: "thu-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "thu-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "thu-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "thu-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   5: {
     // Friday
     shifts: [
-      { id: "fri-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "fri-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "fri-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "fri-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   6: {
     // Saturday
     shifts: [
-      { id: "sat-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "sat-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "sat-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "sat-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
 }
@@ -753,15 +753,37 @@ export default function Home() {
                   <div>allEmployees: {allEmployees.length}</div>
                   <div>mongoEmployees: {mongoEmployees.length}</div>
                   <div>attendanceRecords: {attendanceRecords.length}</div>
+                  <div>bonusPoints: {bonusPoints.length}</div>
+                  <div>customDailyValues: {customDailyValues.length}</div>
                   <div>selectedMonth: {selectedMonth}</div>
+                  {bonusPoints.length > 0 && (
+                    <div className="mt-2 p-2 bg-yellow-50 rounded">
+                      <div className="font-medium">Sample Bonus Points:</div>
+                      {bonusPoints.slice(0, 3).map((bp, i) => (
+                        <div key={i} className="text-xs">
+                          {bp.employeeId} | {bp.date} | {bp.points}đ
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {mongoEmployees.length > 0 && (
+                    <div className="mt-2 p-2 bg-green-50 rounded">
+                      <div className="font-medium">Sample MongoDB Employees:</div>
+                      {mongoEmployees.slice(0, 3).map((emp, i) => (
+                        <div key={i} className="text-xs">
+                          ID: {emp.id || 'none'} | _ID: {emp._id || 'none'} | {emp.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               
               <AttendanceTable
                 employees={allEmployees}
                 attendanceRecords={attendanceRecords}
-                bonusPoints={[]} // TODO: Load from MongoDB API instead of localStorage
-                customDailyValues={[]} // TODO: Load from MongoDB API instead of localStorage  
+                bonusPoints={bonusPoints} // Use actual localStorage data
+                customDailyValues={customDailyValues} // Use actual localStorage data
                 selectedMonth={selectedMonth}
                 user={currentUser}
                 onBonusPointUpdate={handleBonusPointUpdate}
