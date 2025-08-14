@@ -192,18 +192,18 @@ app.get('/api/attendance/by-date', async (req, res) => {
     const endMonth = parseInt(end.split('-')[1]) - 1;
     const endDay = parseInt(end.split('-')[2]);
     
-    // Create VN dates first, then convert to UTC for filtering
-    // VN start: 2025-07-01 00:00 VN time
-    const vnStartDate = new Date(startYear, startMonth, startDay, 0, 0, 0, 0);
-    // VN end: 2025-07-01 23:59 VN time  
-    const vnEndDate = new Date(endYear, endMonth, endDay, 23, 59, 59, 999);
+    // Create VN dates as LOCAL time (not UTC), then convert to UTC for filtering
+    // IMPORTANT: new Date() creates local time, but we need to ensure VN timezone
+    // VN start: 2025-07-01 00:00 VN time = 2025-06-30 17:00 UTC
+    // VN end: 2025-07-31 23:59 VN time = 2025-07-31 16:59 UTC
     
-    // Convert VN time to UTC by subtracting 7 hours (VN = UTC + 7)
-    const startUTC = new Date(vnStartDate.getTime() - 7*60*60*1000);
-    const endUTC = new Date(vnEndDate.getTime() - 7*60*60*1000);
+    // Method 1: Create UTC dates for VN times directly
+    const startUTC = new Date(Date.UTC(startYear, startMonth, startDay, 0, 0, 0, 0) - 7*60*60*1000);
+    const endUTC = new Date(Date.UTC(endYear, endMonth, endDay, 23, 59, 59, 999) - 7*60*60*1000);
     
     console.log(`📅 Filter request: VN dates ${start} to ${end}`);
-    console.log(`📅 VN time range: ${vnStartDate.toISOString()} to ${vnEndDate.toISOString()}`);
+    console.log(`📅 VN 00:00 → UTC: ${new Date(Date.UTC(startYear, startMonth, startDay, 0, 0, 0, 0) - 7*60*60*1000).toISOString()}`);
+    console.log(`📅 VN 23:59 → UTC: ${new Date(Date.UTC(endYear, endMonth, endDay, 23, 59, 59, 999) - 7*60*60*1000).toISOString()}`);
     console.log(`📅 UTC filter range: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
     console.log(`📅 DEBUG: VN start components: ${startYear}-${startMonth+1}-${startDay}`);
     console.log(`📅 DEBUG: VN end components: ${endYear}-${endMonth+1}-${endDay}`);
