@@ -57,13 +57,24 @@ app.get('/api/attendance', async (req, res) => {
             const oldestTime = new Date(Math.min(...times));
             const newestTime = new Date(Math.max(...times));
             
-            console.log(`📅 Oldest record: ${oldestTime.toISOString()} (VN: ${new Date(oldestTime.getTime() + 7*60*60*1000).toISOString()})`);
-            console.log(`📅 Newest record: ${newestTime.toISOString()} (VN: ${new Date(newestTime.getTime() + 7*60*60*1000).toISOString()})`);
+            // Sử dụng logic timezone chuẩn cho debug
+            const convertToVNDebug = (utcDate) => {
+                const systemOffset = utcDate.getTimezoneOffset();
+                if (systemOffset === -420) { // VN timezone
+                    return utcDate;
+                } else {
+                    return new Date(utcDate.getTime() + 7*60*60*1000);
+                }
+            };
             
-            // Phân tích theo giờ
+            console.log(`📅 Oldest record: ${oldestTime.toISOString()} (VN: ${convertToVNDebug(oldestTime).toISOString()})`);
+            console.log(`📅 Newest record: ${newestTime.toISOString()} (VN: ${convertToVNDebug(newestTime).toISOString()})`);
+            
+            // Phân tích theo giờ với logic chuẩn
             const hourStats = {};
             logs.data.forEach(record => {
-                const vnTime = new Date(new Date(record.recordTime).getTime() + 7*60*60*1000);
+                const utcTime = new Date(record.recordTime);
+                const vnTime = convertToVNDebug(utcTime);
                 const hour = vnTime.getHours();
                 hourStats[hour] = (hourStats[hour] || 0) + 1;
             });
