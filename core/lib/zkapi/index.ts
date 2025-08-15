@@ -26,13 +26,25 @@ class ZKAPIService {
 
   /**
    * Convert UTC timestamp to Vietnam timezone (UTC+7)
-   * Machine timestamps are typically in UTC, need to convert to Vietnam time
+   * FIXED: Sử dụng cùng logic với zk-processor.ts
    */
   private convertToVietnamTime(utcTimestamp: string): Date {
     const utcDate = new Date(utcTimestamp)
-    // Add 7 hours for Vietnam timezone (UTC+7)
-    const vietnamDate = new Date(utcDate.getTime() + (7 * 60 * 60 * 1000))
-    return vietnamDate
+    
+    // Kiểm tra timezone của hệ thống (cùng logic với zk-processor.ts)
+    const systemOffset = utcDate.getTimezoneOffset()
+    const vnOffset = -420 // VN = UTC+7 = -420 minutes
+    
+    if (systemOffset === vnOffset) {
+      // Hệ thống đã ở VN timezone, không cần convert
+      return utcDate
+    } else {
+      // Hệ thống ở timezone khác, cần convert
+      const vnString = utcDate.toLocaleString("sv-SE", {
+        timeZone: "Asia/Ho_Chi_Minh"
+      })
+      return new Date(vnString)
+    }
   }
 
   /**
