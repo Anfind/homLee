@@ -9,7 +9,7 @@ import { EmployeeManagement } from "@/components/employee-management"
 import { DepartmentManagement } from "@/components/department-management"
 import { CheckInSettingsManagement } from "@/components/check-in-settings-management"
 import DataSyncManager from "@/components/data-sync-manager"
-import { useLocalStorage } from "@/hooks/use-local-storage"
+// Removed useLocalStorage - now using MongoDB only
 import { Calendar, Users, TrendingUp, FileSpreadsheet, UserPlus, Building2, Clock, Download, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -72,30 +72,9 @@ export interface CustomDailyValue {
   previousValue: string
 }
 
-// Khởi tạo với danh sách rỗng - sẽ được tạo từ XML
+// Initial data - for reference only, actual data comes from MongoDB
 const initialEmployees: Employee[] = []
-
-// Danh sách phòng ban mặc định
-const initialDepartments: Department[] = [
-  {
-    id: "dept-001",
-    name: "Phòng Kỹ thuật",
-    createdAt: new Date().toISOString(),
-    createdBy: "system",
-  },
-  {
-    id: "dept-002", 
-    name: "Phòng Kinh doanh",
-    createdAt: new Date().toISOString(),
-    createdBy: "system",
-  },
-  {
-    id: "dept-003",
-    name: "Phòng Hành chính",
-    createdAt: new Date().toISOString(),
-    createdBy: "system",
-  },
-]
+const initialDepartments: Department[] = []
 
 // NEW: Default check-in settings for each day of the week with shifts
 const defaultCheckInSettings: CheckInSettings = {
@@ -153,14 +132,13 @@ const defaultCheckInSettings: CheckInSettings = {
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<UserType | null>(null)
   
-  // TODO: Migrate these to MongoDB API calls instead of localStorage
-  const [departments, setDepartments] = useLocalStorage<Department[]>("departments", initialDepartments)
-  const [employees, setEmployees] = useLocalStorage<Employee[]>("employees", initialEmployees)
-  const [mongoEmployees, setMongoEmployees] = useState<Employee[]>([]) // MongoDB employees
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]) // Changed to useState, load from MongoDB
-  const [bonusPoints, setBonusPoints] = useLocalStorage<BonusPoint[]>("bonusPoints", [])
-  const [customDailyValues, setCustomDailyValues] = useLocalStorage<CustomDailyValue[]>("customDailyValues", [])
-  const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings) // Changed to useState, load from MongoDB
+  // MIGRATED: All data now uses MongoDB instead of localStorage
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([]) // MongoDB employees only
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [bonusPoints, setBonusPoints] = useState<BonusPoint[]>([])
+  const [customDailyValues, setCustomDailyValues] = useState<CustomDailyValue[]>([])
+  const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     // Use March 2025 where we have sample data
     return "2025-03"
@@ -172,7 +150,7 @@ export default function Home() {
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
   const [showCheckInSettingsManagement, setShowCheckInSettingsManagement] = useState(false)
 
-  // Load MongoDB employees and attendance records on component mount
+  // Load ALL MongoDB data on component mount
   useEffect(() => {
     const fetchMongoData = async () => {
       try {
@@ -180,8 +158,33 @@ export default function Home() {
         const employeesResponse = await fetch('/api/employees')
         const employeesResult = await employeesResponse.json()
         if (employeesResult.success) {
-          setMongoEmployees(employeesResult.data)
+          setEmployees(employeesResult.data)
           console.log(`✅ Loaded ${employeesResult.data.length} employees from MongoDB`)
+        }
+
+        // Load departments from MongoDB
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+          console.log(`✅ Loaded ${departmentsResult.data.length} departments from MongoDB`)
+          
+          // Auto-seed if no departments exist
+          if (departmentsResult.data.length === 0) {
+            console.log('🌱 No departments found, seeding initial data...')
+            const seedResponse = await fetch('/api/seed-data', { method: 'POST' })
+            const seedResult = await seedResponse.json()
+            if (seedResult.success) {
+              console.log('✅ Initial data seeded successfully')
+              // Reload departments after seeding
+              const newDepartmentsResponse = await fetch('/api/departments')
+              const newDepartmentsResult = await newDepartmentsResponse.json()
+              if (newDepartmentsResult.success) {
+                setDepartments(newDepartmentsResult.data)
+                console.log(`✅ Loaded ${newDepartmentsResult.data.length} departments after seeding`)
+              }
+            }
+          }
         }
 
         // Load attendance records from MongoDB for the selected month
@@ -201,16 +204,32 @@ export default function Home() {
           if (attendanceResult.data.length > 0) {
             const attendanceEmployeeIds = [...new Set(attendanceResult.data.map((r: AttendanceRecord) => r.employeeId))]
             console.log('👥 Attendance Employee IDs:', attendanceEmployeeIds.slice(0, 10))
-            console.log('👥 MongoDB Employee IDs:', mongoEmployees.slice(0, 10).map(e => e.id || e._id))
+            console.log('👥 MongoDB Employee IDs:', employeesResult.data?.slice(0, 10).map((e: Employee) => e.id || e._id))
             
             // Check for matches
             const matches = attendanceEmployeeIds.filter(aId => 
-              mongoEmployees.some(emp => emp.id === aId || emp._id === aId)
+              employeesResult.data?.some((emp: Employee) => emp.id === aId || emp._id === aId)
             )
             console.log(`🔗 Employee ID matches: ${matches.length}/${attendanceEmployeeIds.length}`)
           }
         } else {
           console.log('❌ Failed to load attendance records:', attendanceResult)
+        }
+
+        // Load bonus points from MongoDB for the selected month
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+          console.log(`✅ Loaded ${bonusPointsResult.data.length} bonus points from MongoDB`)
+        }
+
+        // Load custom daily values from MongoDB for the selected month
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+          console.log(`✅ Loaded ${customValuesResult.data.length} custom daily values from MongoDB`)
         }
 
         // Load check-in settings from MongoDB
@@ -219,6 +238,9 @@ export default function Home() {
         if (settingsResult.success) {
           setCheckInSettings(settingsResult.data)
           console.log(`✅ Loaded check-in settings from MongoDB`)
+        } else {
+          console.log('⚠️ Failed to load check-in settings, using defaults')
+          // Keep default settings if MongoDB load fails
         }
       } catch (error) {
         console.error('Error loading MongoDB data:', error)
@@ -288,66 +310,163 @@ export default function Home() {
     })
   }
 
-  const handleBonusPointUpdate = (employeeId: string, date: string, points: number) => {
+  const handleBonusPointUpdate = async (employeeId: string, date: string, points: number) => {
     if (!currentUser) return
 
-    const existingBonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === date)
+    try {
+      const response = await fetch('/api/bonus-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          date,
+          points,
+          editedBy: currentUser.username,
+          reason: 'Manual adjustment from UI'
+        })
+      })
 
-    const newBonusPoint: BonusPoint = {
-      employeeId,
-      date,
-      points,
-      editedBy: currentUser.username,
-      editedAt: new Date().toISOString(),
-      previousValue: existingBonus?.points || 0,
+      const result = await response.json()
+      if (result.success) {
+        // Reload bonus points for current month
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+          console.log(`✅ Updated bonus points for employee ${employeeId}`)
+        }
+      } else {
+        console.error('Failed to update bonus points:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating bonus points:', error)
     }
-
-    setBonusPoints((prev) => {
-      const filtered = prev.filter((bp) => !(bp.employeeId === employeeId && bp.date === date))
-      return [...filtered, newBonusPoint]
-    })
   }
 
   // New handler for custom daily values
-  const handleCustomValueUpdate = (employeeId: string, date: string, columnKey: string, value: string) => {
+  const handleCustomValueUpdate = async (employeeId: string, date: string, columnKey: string, value: string) => {
     if (!currentUser) return
 
-    const existingValue = customDailyValues.find(
-      (cdv) => cdv.employeeId === employeeId && cdv.date === date && cdv.columnKey === columnKey,
-    )
+    try {
+      const response = await fetch('/api/custom-daily-values', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          date,
+          columnKey,
+          value,
+          editedBy: currentUser.username
+        })
+      })
 
-    const newCustomValue: CustomDailyValue = {
-      employeeId,
-      date,
-      columnKey,
-      value,
-      editedBy: currentUser.username,
-      editedAt: new Date().toISOString(),
-      previousValue: existingValue?.value || "",
+      const result = await response.json()
+      if (result.success) {
+        // Reload custom daily values for current month
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+          console.log(`✅ Updated custom value for employee ${employeeId}`)
+        }
+      } else {
+        console.error('Failed to update custom value:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating custom value:', error)
     }
-
-    setCustomDailyValues((prev) => {
-      const filtered = prev.filter(
-        (cdv) => !(cdv.employeeId === employeeId && cdv.date === date && cdv.columnKey === columnKey),
-      )
-      return [...filtered, newCustomValue]
-    })
   }
 
-  const handleEmployeeAdd = (employee: Employee) => {
-    setEmployees((prev) => [...prev, employee])
+  const handleEmployeeAdd = async (employee: Employee) => {
+    try {
+      const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(employee)
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload employees
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+          console.log(`✅ Added employee: ${employee.name}`)
+        }
+      } else {
+        console.error('Failed to add employee:', result.message)
+      }
+    } catch (error) {
+      console.error('Error adding employee:', error)
+    }
   }
 
-  const handleEmployeeUpdate = (updatedEmployee: Employee) => {
-    setEmployees((prev) => prev.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp)))
+  const handleEmployeeUpdate = async (updatedEmployee: Employee) => {
+    try {
+      const response = await fetch(`/api/employees`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEmployee)
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload employees
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+          console.log(`✅ Updated employee: ${updatedEmployee.name}`)
+        }
+      } else {
+        console.error('Failed to update employee:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating employee:', error)
+    }
   }
 
-  const handleEmployeeDelete = (employeeId: string) => {
-    setEmployees((prev) => prev.filter((emp) => emp.id !== employeeId))
-    // Xóa luôn dữ liệu chấm công và điểm cộng
-    setAttendanceRecords((prev) => prev.filter((record) => record.employeeId !== employeeId))
-    setBonusPoints((prev) => prev.filter((bp) => bp.employeeId !== employeeId))
-    setCustomDailyValues((prev) => prev.filter((cdv) => cdv.employeeId !== employeeId)) // Delete custom values too
+  const handleEmployeeDelete = async (employeeId: string) => {
+    try {
+      const response = await fetch(`/api/employees?id=${employeeId}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload employees and related data
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+          console.log(`✅ Deleted employee: ${employeeId}`)
+        }
+
+        // Reload attendance records and bonus points for current month
+        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+        const attendanceResult = await attendanceResponse.json()
+        if (attendanceResult.success) {
+          setAttendanceRecords(attendanceResult.data)
+        }
+
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+        }
+
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+        }
+      } else {
+        console.error('Failed to delete employee:', result.message)
+      }
+    } catch (error) {
+      console.error('Error deleting employee:', error)
+    }
   }
 
   // Temporary stub functions for user management - these should be replaced with MongoDB API calls
@@ -366,36 +485,123 @@ export default function Home() {
     // TODO: Call /api/users DELETE
   }
 
-  const handleDepartmentAdd = (department: Department) => {
-    setDepartments((prev) => [...prev, department])
+  const handleDepartmentAdd = async (department: Department) => {
+    try {
+      const response = await fetch('/api/departments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: department.name,
+          createdBy: currentUser?.username || 'system'
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload departments
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+          console.log(`✅ Added department: ${department.name}`)
+        }
+      } else {
+        console.error('Failed to add department:', result.message)
+      }
+    } catch (error) {
+      console.error('Error adding department:', error)
+    }
   }
 
-  const handleDepartmentUpdate = (updatedDepartment: Department) => {
-    setDepartments((prev) => prev.map((dept) => (dept.id === updatedDepartment.id ? updatedDepartment : dept)))
+  const handleDepartmentUpdate = async (updatedDepartment: Department) => {
+    try {
+      const response = await fetch('/api/departments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: updatedDepartment.id,
+          name: updatedDepartment.name,
+          isActive: true
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload departments
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+          console.log(`✅ Updated department: ${updatedDepartment.name}`)
+        }
+      } else {
+        console.error('Failed to update department:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating department:', error)
+    }
   }
 
-  const handleDepartmentDelete = (departmentId: string) => {
-    const department = departments.find((d) => d.id === departmentId)
-    if (!department) return
+  const handleDepartmentDelete = async (departmentId: string) => {
+    try {
+      const response = await fetch(`/api/departments?id=${departmentId}`, {
+        method: 'DELETE'
+      })
 
-    // Xóa tất cả nhân viên thuộc phòng ban này
-    setEmployees((prev) => prev.filter((emp) => emp.department !== department.name))
-    // Xóa phòng ban
-    setDepartments((prev) => prev.filter((dept) => dept.id !== departmentId))
+      const result = await response.json()
+      if (result.success) {
+        // Reload departments and employees
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+        }
+
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+        }
+
+        console.log(`✅ Deleted department: ${departmentId}`)
+      } else {
+        console.error('Failed to delete department:', result.message)
+      }
+    } catch (error) {
+      console.error('Error deleting department:', error)
+    }
   }
 
-  const handleCheckInSettingsSave = (newSettings: CheckInSettings) => {
-    setCheckInSettings(newSettings)
+  const handleCheckInSettingsSave = async (newSettings: CheckInSettings) => {
+    try {
+      const response = await fetch('/api/check-in-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: newSettings,
+          updatedBy: currentUser?.username || 'system'
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        setCheckInSettings(newSettings)
+        console.log(`✅ Updated check-in settings`)
+      } else {
+        console.error('Failed to update check-in settings:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating check-in settings:', error)
+    }
   }
 
   if (!currentUser) {
     return <LoginForm onLogin={handleLogin} />
   }
 
-  // Calculate stats
-  const allEmployees = mongoEmployees.length > 0 ? mongoEmployees : employees // Use MongoDB data if available
+  // Calculate stats - MongoDB only
   const filteredEmployees =
-    currentUser.role === "admin" ? allEmployees : allEmployees.filter((emp) => emp.department === currentUser.department)
+    currentUser.role === "admin" ? employees : employees.filter((emp) => emp.department === currentUser.department)
 
   const currentMonthRecords = attendanceRecords.filter((record) => record.date.startsWith(selectedMonth))
 
@@ -462,9 +668,9 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-3xl font-bold text-blue-900">{totalEmployees}</p>
-                {mongoEmployees.length > 0 && (
+                {employees.length > 0 && (
                   <p className="text-xs text-blue-500 mt-1">
-                    📊 MongoDB: {mongoEmployees.length} nhân viên
+                    📊 MongoDB: {employees.length} nhân viên
                   </p>
                 )}
               </div>
@@ -691,7 +897,7 @@ export default function Home() {
         </div>
 
         {/* Data Status and Attendance Table */}
-        {allEmployees.length === 0 ? (
+        {employees.length === 0 ? (
           <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 rounded-lg p-6 mb-8">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -747,11 +953,11 @@ export default function Home() {
             <div className="p-6">
               {/* Debug info */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <h3 className="font-bold text-blue-800">🔍 DEBUG INFO:</h3>
+                <h3 className="font-bold text-blue-800">🔍 DEBUG INFO (MongoDB Only):</h3>
                 <div className="text-sm text-blue-700">
                   <div>currentUser: {currentUser?.name} ({currentUser?.role})</div>
-                  <div>allEmployees: {allEmployees.length}</div>
-                  <div>mongoEmployees: {mongoEmployees.length}</div>
+                  <div>employees: {employees.length}</div>
+                  <div>departments: {departments.length}</div>
                   <div>attendanceRecords: {attendanceRecords.length}</div>
                   <div>bonusPoints: {bonusPoints.length}</div>
                   <div>customDailyValues: {customDailyValues.length}</div>
@@ -766,10 +972,10 @@ export default function Home() {
                       ))}
                     </div>
                   )}
-                  {mongoEmployees.length > 0 && (
+                  {employees.length > 0 && (
                     <div className="mt-2 p-2 bg-green-50 rounded">
                       <div className="font-medium">Sample MongoDB Employees:</div>
-                      {mongoEmployees.slice(0, 3).map((emp, i) => (
+                      {employees.slice(0, 3).map((emp, i) => (
                         <div key={i} className="text-xs">
                           ID: {emp.id || 'none'} | _ID: {emp._id || 'none'} | {emp.name}
                         </div>
@@ -780,10 +986,10 @@ export default function Home() {
               </div>
               
               <AttendanceTable
-                employees={allEmployees}
+                employees={employees}
                 attendanceRecords={attendanceRecords}
-                bonusPoints={bonusPoints} // Use actual localStorage data
-                customDailyValues={customDailyValues} // Use actual localStorage data
+                bonusPoints={bonusPoints} // MongoDB data
+                customDailyValues={customDailyValues} // MongoDB data
                 selectedMonth={selectedMonth}
                 user={currentUser}
                 onBonusPointUpdate={handleBonusPointUpdate}

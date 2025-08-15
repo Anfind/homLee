@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose'
 // Employee Interface matching the existing structure
 export interface IEmployee extends Document {
   _id: string
+  id?: string // Virtual field for compatibility
   name: string
   title: string
   department: string
@@ -31,7 +32,14 @@ const EmployeeSchema = new Schema<IEmployee>({
   }
 }, {
   timestamps: true,
-  _id: false // Disable auto-generated _id since we provide our own
+  _id: false, // Disable auto-generated _id since we provide our own
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+})
+
+// Virtual field for compatibility with frontend
+EmployeeSchema.virtual('id').get(function() {
+  return this._id
 })
 
 // Create indexes for better performance
