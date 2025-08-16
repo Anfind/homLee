@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose'
 // Department Interface
 export interface IDepartment extends Document {
   _id: string
+  id?: string // Virtual field for compatibility
   name: string
   createdAt: Date
   createdBy: string
@@ -31,7 +32,14 @@ const DepartmentSchema = new Schema<IDepartment>({
   }
 }, {
   timestamps: true,
-  _id: false // Disable auto-generated _id since we provide our own
+  _id: false, // Disable auto-generated _id since we provide our own
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+})
+
+// Virtual field for compatibility with frontend
+DepartmentSchema.virtual('id').get(function() {
+  return this._id
 })
 
 // Create indexes  
