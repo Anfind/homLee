@@ -1,52 +1,106 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Lock, Shield, Building2, Info, User } from "lucide-react"
-import type { User as UserType } from "@/app/page"
+
+export interface UserType {
+  username: string
+  password?: string // For display only, not used in API
+  role: "admin" | "truongphong"
+  department?: string
+  name: string
+  lastLogin?: Date
+}
 
 interface LoginFormProps {
   onLogin: (user: UserType) => void
-  users: UserType[]
 }
 
-export function LoginForm({ onLogin, users }: LoginFormProps) {
+export function LoginForm({ onLogin }: LoginFormProps) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState("")
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [users, setUsers] = useState<UserType[]>([])
+
+  // Fetch users from MongoDB API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users')
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success) {
+            // Add demo passwords for display (these are not used for actual auth)
+            const usersWithDemoPasswords = result.data.map((user: any) => ({
+              ...user,
+              password: user.username === 'admin' ? 'admin123' : `${user.username}123`
+            }))
+            setUsers(usersWithDemoPasswords)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error)
+      }
+    }
+    
+    fetchUsers()
+  }, [])
 
   const handleAccountSelect = (accountUsername: string) => {
     const account = users.find((acc) => acc.username === accountUsername)
     if (account) {
       setUsername(account.username)
-      setPassword(account.password)
+      setPassword(account.password || '')
       setSelectedAccount(accountUsername)
       setError("")
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setIsLoading(true)
 
     if (!username.trim() || !password.trim()) {
       setError("Vui lòng nhập đầy đủ thông tin")
+      setIsLoading(false)
       return
     }
 
-    const account = users.find((acc) => acc.username === username && acc.password === password)
+    try {
+      // Call MongoDB authentication API
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+        }),
+      })
 
-    if (!account) {
-      setError("Tên đăng nhập hoặc mật khẩu không đúng")
-      return
+      const result = await response.json()
+
+      if (result.success) {
+        // Login successful
+        onLogin(result.data)
+      } else {
+        setError(result.error || "Tên đăng nhập hoặc mật khẩu không đúng")
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      setError("Lỗi kết nối. Vui lòng thử lại.")
+    } finally {
+      setIsLoading(false)
     }
-
-    onLogin(account)
   }
 
   const getRoleIcon = (role: string) => {
@@ -62,14 +116,14 @@ export function LoginForm({ onLogin, users }: LoginFormProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4" suppressHydrationWarning>
+      <div className="w-full max-w-lg" suppressHydrationWarning>
         <Card className="shadow-2xl border-0">
           <CardHeader className="text-center pb-4">
             <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <Lock className="w-10 h-10 text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống chấm công</CardTitle>
+            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm Lee Homes</CardTitle>
             <CardDescription className="text-gray-600 text-base">
               Đăng nhập để quản lý chấm công nhân viên
             </CardDescription>
@@ -207,9 +261,10 @@ export function LoginForm({ onLogin, users }: LoginFormProps) {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg font-medium"
+                  disabled={isLoading}
+                  className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg font-medium disabled:opacity-50"
                 >
-                  Đăng nhập
+                  {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                 </Button>
               </form>
             </div>
@@ -217,7 +272,7 @@ export function LoginForm({ onLogin, users }: LoginFormProps) {
             <div className="text-center text-xs text-gray-500 border-t pt-4">
               <div className="flex items-center justify-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Phiên bản demo - Dữ liệu lưu trên trình duyệt
+                Kết nối với MongoDB - Dữ liệu được lưu an toàn
               </div>
             </div>
           </CardContent>

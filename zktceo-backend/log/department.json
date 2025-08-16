@@ -1,0 +1,787 @@
+{
+  "Đông Sơn": [
+    {
+      "userId": "11",
+      "name": "Thuỷ"
+    },
+    {
+      "userId": "41",
+      "name": "Hòa"
+    },
+    {
+      "userId": "43",
+      "name": "TP Hiếu"
+    },
+    {
+      "userId": "95",
+      "name": "Bùi Hiển"
+    },
+    {
+      "userId": "182",
+      "name": "Tiến"
+    },
+    {
+      "userId": "188",
+      "name": "Quang"
+    },
+    {
+      "userId": "201",
+      "name": "Xuyên"
+    },
+    {
+      "userId": "343",
+      "name": "Hiền"
+    },
+    {
+      "userId": "345",
+      "name": "Tuyến"
+    },
+    {
+      "userId": "385",
+      "name": "Cương"
+    },
+    {
+      "userId": "469",
+      "name": "Nương"
+    },
+    {
+      "userId": "500",
+      "name": "Tâm"
+    }
+  ],
+  "Khối Đại Bàng": [
+    {
+      "userId": "14",
+      "name": "GB Hằng"
+    },
+    {
+      "userId": "16",
+      "name": "ĐC Minh"
+    },
+    {
+      "userId": "24",
+      "name": "Việt"
+    },
+    {
+      "userId": "25",
+      "name": "Thúy"
+    },
+    {
+      "userId": "40",
+      "name": "Lý"
+    },
+    {
+      "userId": "48",
+      "name": "Quân"
+    },
+    {
+      "userId": "65",
+      "name": "ĐC Tuyết"
+    },
+    {
+      "userId": "66",
+      "name": "Cường"
+    },
+    {
+      "userId": "88",
+      "name": "Lân"
+    },
+    {
+      "userId": "92",
+      "name": "Nguyệt"
+    },
+    {
+      "userId": "184",
+      "name": "Giang"
+    },
+    {
+      "userId": "237",
+      "name": "Ng Hoa"
+    },
+    {
+      "userId": "239",
+      "name": "Loan"
+    },
+    {
+      "userId": "242",
+      "name": "Huyên"
+    },
+    {
+      "userId": "243",
+      "name": "Ng Liên"
+    },
+    {
+      "userId": "247",
+      "name": "Ng Trang"
+    },
+    {
+      "userId": "249",
+      "name": "Lai"
+    },
+    {
+      "userId": "257",
+      "name": "Chước"
+    },
+    {
+      "userId": "272",
+      "name": "Huy"
+    },
+    {
+      "userId": "278",
+      "name": "Phương"
+    },
+    {
+      "userId": "342",
+      "name": "Thanh"
+    },
+    {
+      "userId": "350",
+      "name": "Dũng"
+    },
+    {
+      "userId": "427",
+      "name": "Anh"
+    },
+    {
+      "userId": "430",
+      "name": "Hà"
+    },
+    {
+      "userId": "546",
+      "name": "Vân"
+    }
+  ],
+  "Khối đại phát": [
+    {
+      "userId": "67",
+      "name": "Nhật"
+    },
+    {
+      "userId": "80",
+      "name": "Phương Anh"
+    },
+    {
+      "userId": "94",
+      "name": "ĐC Hoàng"
+    },
+    {
+      "userId": "107",
+      "name": "Phương"
+    },
+    {
+      "userId": "136",
+      "name": "GĐ Tân"
+    },
+    {
+      "userId": "143",
+      "name": "ĐC Hoa"
+    },
+    {
+      "userId": "291",
+      "name": "Nam Hai"
+    },
+    {
+      "userId": "420",
+      "name": "Tuấn"
+    },
+    {
+      "userId": "421",
+      "name": "Đạt"
+    },
+    {
+      "userId": "424",
+      "name": "Minh"
+    },
+    {
+      "userId": "425",
+      "name": "Tú"
+    },
+    {
+      "userId": "432",
+      "name": "Nam"
+    },
+    {
+      "userId": "447",
+      "name": "Trung"
+    },
+    {
+      "userId": "451",
+      "name": "Hoà"
+    },
+    {
+      "userId": "461",
+      "name": "Sáu"
+    },
+    {
+      "userId": "462",
+      "name": "Ng Hùng"
+    },
+    {
+      "userId": "509",
+      "name": "Ngân"
+    }
+  ],
+  "Khối hoàng gia": [
+    {
+      "userId": "93",
+      "name": "ĐC Bình"
+    },
+    {
+      "userId": "100",
+      "name": "Quốc Anh"
+    },
+    {
+      "userId": "102",
+      "name": "GĐ Nam"
+    },
+    {
+      "userId": "105",
+      "name": "ĐC Sơn"
+    },
+    {
+      "userId": "194",
+      "name": "Tâm"
+    },
+    {
+      "userId": "372",
+      "name": "Trọng"
+    },
+    {
+      "userId": "378",
+      "name": "Hiền"
+    },
+    {
+      "userId": "379",
+      "name": "Dương"
+    },
+    {
+      "userId": "485",
+      "name": "Sơn"
+    }
+  ],
+  "Khối mạnh thắng": [
+    {
+      "userId": "29",
+      "name": "TK Hoa"
+    },
+    {
+      "userId": "37",
+      "name": "GĐ Thắng"
+    },
+    {
+      "userId": "76",
+      "name": "Công Dũng"
+    },
+    {
+      "userId": "81",
+      "name": "ĐC Xuyến"
+    },
+    {
+      "userId": "83",
+      "name": "Huyền"
+    },
+    {
+      "userId": "87",
+      "name": "Phương Loan"
+    },
+    {
+      "userId": "104",
+      "name": "Oanh"
+    },
+    {
+      "userId": "108",
+      "name": "May"
+    },
+    {
+      "userId": "157",
+      "name": "ĐC Mùi"
+    },
+    {
+      "userId": "161",
+      "name": "Loan"
+    },
+    {
+      "userId": "171",
+      "name": "Ng Oanh"
+    },
+    {
+      "userId": "172",
+      "name": "Hương"
+    },
+    {
+      "userId": "200",
+      "name": "Ngọc Sơn"
+    },
+    {
+      "userId": "303",
+      "name": "Vân"
+    },
+    {
+      "userId": "329",
+      "name": "Long"
+    },
+    {
+      "userId": "344",
+      "name": "Trịnh Oanh"
+    },
+    {
+      "userId": "347",
+      "name": "Đại"
+    },
+    {
+      "userId": "349",
+      "name": "Dinh"
+    },
+    {
+      "userId": "386",
+      "name": "Cường"
+    },
+    {
+      "userId": "387",
+      "name": "Thảo"
+    },
+    {
+      "userId": "388",
+      "name": "Nhị"
+    },
+    {
+      "userId": "394",
+      "name": "Sơn"
+    },
+    {
+      "userId": "452",
+      "name": "Quang"
+    },
+    {
+      "userId": "456",
+      "name": "Trọng Dũng"
+    },
+    {
+      "userId": "494",
+      "name": "Nam"
+    },
+    {
+      "userId": "495",
+      "name": "Lê Hoàn"
+    },
+    {
+      "userId": "530",
+      "name": "Hiếu"
+    },
+    {
+      "userId": "531",
+      "name": "Phương"
+    },
+    {
+      "userId": "536",
+      "name": "Lương"
+    },
+    {
+      "userId": "537",
+      "name": "Tuấn"
+    }
+  ],
+  "Khối phát tài": [
+    {
+      "userId": "8",
+      "name": "Cẩm Vân"
+    },
+    {
+      "userId": "9",
+      "name": "Giáp"
+    },
+    {
+      "userId": "10",
+      "name": "Định"
+    },
+    {
+      "userId": "46",
+      "name": "Thơm"
+    },
+    {
+      "userId": "91",
+      "name": "Mong"
+    },
+    {
+      "userId": "167",
+      "name": "Cường"
+    },
+    {
+      "userId": "231",
+      "name": "Hường"
+    },
+    {
+      "userId": "280",
+      "name": "Sáng"
+    },
+    {
+      "userId": "285",
+      "name": "Thanh Vân"
+    },
+    {
+      "userId": "309",
+      "name": "Kiên"
+    },
+    {
+      "userId": "352",
+      "name": "Thuý"
+    },
+    {
+      "userId": "353",
+      "name": "Hằng"
+    },
+    {
+      "userId": "355",
+      "name": "Hoa"
+    },
+    {
+      "userId": "356",
+      "name": "Cường"
+    },
+    {
+      "userId": "357",
+      "name": "Dư"
+    },
+    {
+      "userId": "358",
+      "name": "Ngọc"
+    },
+    {
+      "userId": "360",
+      "name": "Nam"
+    },
+    {
+      "userId": "365",
+      "name": "Tuấn"
+    },
+    {
+      "userId": "366",
+      "name": "Việt"
+    },
+    {
+      "userId": "393",
+      "name": "Lương"
+    },
+    {
+      "userId": "460",
+      "name": "Toàn"
+    },
+    {
+      "userId": "492",
+      "name": "Quang"
+    },
+    {
+      "userId": "493",
+      "name": "Hưng"
+    },
+    {
+      "userId": "502",
+      "name": "Dung"
+    },
+    {
+      "userId": "505",
+      "name": "Sơn"
+    },
+    {
+      "userId": "506",
+      "name": "Hà"
+    },
+    {
+      "userId": "507",
+      "name": "Tuyển"
+    },
+    {
+      "userId": "508",
+      "name": "Phương"
+    },
+    {
+      "userId": "525",
+      "name": "Thuỷ"
+    },
+    {
+      "userId": "526",
+      "name": "Hằng"
+    },
+    {
+      "userId": "527",
+      "name": "Bảo"
+    },
+    {
+      "userId": "528",
+      "name": "Tuyết"
+    },
+    {
+      "userId": "539",
+      "name": "Đạt"
+    },
+    {
+      "userId": "545",
+      "name": "Long"
+    },
+    {
+      "userId": "547",
+      "name": "Thái"
+    },
+    {
+      "userId": "557",
+      "name": "Thúy"
+    }
+  ],
+  "Khối tiên phong": [
+    {
+      "userId": "3",
+      "name": "Thủy"
+    },
+    {
+      "userId": "5",
+      "name": "Thông"
+    },
+    {
+      "userId": "51",
+      "name": "Khanh"
+    },
+    {
+      "userId": "75",
+      "name": "Khuyên"
+    },
+    {
+      "userId": "96",
+      "name": "Tuấn"
+    },
+    {
+      "userId": "228",
+      "name": "Minh"
+    },
+    {
+      "userId": "236",
+      "name": "Ng Hà"
+    },
+    {
+      "userId": "253",
+      "name": "Tường"
+    },
+    {
+      "userId": "266",
+      "name": "Đinh Tuấn"
+    },
+    {
+      "userId": "274",
+      "name": "Ngọc"
+    },
+    {
+      "userId": "292",
+      "name": "CV Anh"
+    },
+    {
+      "userId": "362",
+      "name": "Phong"
+    },
+    {
+      "userId": "363",
+      "name": "Thắng"
+    },
+    {
+      "userId": "364",
+      "name": "Liên"
+    },
+    {
+      "userId": "369",
+      "name": "Trường"
+    },
+    {
+      "userId": "370",
+      "name": "Thúy"
+    },
+    {
+      "userId": "371",
+      "name": "Huyền"
+    },
+    {
+      "userId": "382",
+      "name": "Sâm"
+    },
+    {
+      "userId": "406",
+      "name": "Hằng"
+    },
+    {
+      "userId": "410",
+      "name": "Mai"
+    },
+    {
+      "userId": "411",
+      "name": "Hoàng"
+    },
+    {
+      "userId": "468",
+      "name": "Hưng"
+    },
+    {
+      "userId": "476",
+      "name": "Tuyết"
+    }
+  ],
+  "Phòng 04": [
+    {
+      "userId": "128",
+      "name": "TP Tuấn"
+    },
+    {
+      "userId": "135",
+      "name": "Thái"
+    },
+    {
+      "userId": "415",
+      "name": "Đại"
+    }
+  ],
+  "Phòng 06": [
+    {
+      "userId": "71",
+      "name": "Thanh"
+    },
+    {
+      "userId": "175",
+      "name": "ĐC Thơm"
+    },
+    {
+      "userId": "183",
+      "name": "Thương"
+    },
+    {
+      "userId": "334",
+      "name": "Nam"
+    },
+    {
+      "userId": "426",
+      "name": "Thảo"
+    },
+    {
+      "userId": "515",
+      "name": "Linh"
+    },
+    {
+      "userId": "532",
+      "name": "Anh"
+    }
+  ],
+  "Phòng 07": [
+    {
+      "userId": "106",
+      "name": "Huy"
+    },
+    {
+      "userId": "110",
+      "name": "Cường"
+    },
+    {
+      "userId": "189",
+      "name": "TP Hằng 07"
+    },
+    {
+      "userId": "407",
+      "name": "Sơn"
+    },
+    {
+      "userId": "408",
+      "name": "Lê"
+    },
+    {
+      "userId": "465",
+      "name": "Thành"
+    }
+  ],
+  "Phòng 1": [
+    {
+      "userId": "131",
+      "name": "Thi"
+    },
+    {
+      "userId": "132",
+      "name": "TP Trọng"
+    },
+    {
+      "userId": "145",
+      "name": "Cường"
+    },
+    {
+      "userId": "212",
+      "name": "Trang"
+    },
+    {
+      "userId": "534",
+      "name": "Dung"
+    },
+    {
+      "userId": "535",
+      "name": "Văn"
+    }
+  ],
+  "Phòng 10": [
+    {
+      "userId": "53",
+      "name": "Khánh"
+    },
+    {
+      "userId": "148",
+      "name": "Hảo"
+    },
+    {
+      "userId": "165",
+      "name": "TP Vĩnh 10"
+    },
+    {
+      "userId": "255",
+      "name": "Huệ Dũng"
+    },
+    {
+      "userId": "275",
+      "name": "Hiếu"
+    },
+    {
+      "userId": "361",
+      "name": "Thành"
+    },
+    {
+      "userId": "391",
+      "name": "Tâm"
+    },
+    {
+      "userId": "429",
+      "name": "Nguyệt"
+    },
+    {
+      "userId": "449",
+      "name": "Tùng"
+    },
+    {
+      "userId": "450",
+      "name": "Hà"
+    },
+    {
+      "userId": "457",
+      "name": "Đào"
+    },
+    {
+      "userId": "487",
+      "name": "Thái"
+    },
+    {
+      "userId": "503",
+      "name": "Ngọc Hiếu"
+    },
+    {
+      "userId": "522",
+      "name": "Dân"
+    },
+    {
+      "userId": "523",
+      "name": "Huy"
+    },
+    {
+      "userId": "524",
+      "name": "Hiếu"
+    }
+  ]
+
+}

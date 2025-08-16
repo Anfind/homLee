@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Search, Download, History, Edit3, DollarSign, PlusSquare } from "lucide-react"
-import type { Employee, AttendanceRecord, BonusPoint, User, CustomDailyValue } from "@/app/page"
+import type { Employee, AttendanceRecord, BonusPoint, CustomDailyValue } from "@/app/page"
+import type { UserType } from "@/components/login-form"
 import * as XLSX from "xlsx"
 
 interface AttendanceTableProps {
@@ -17,7 +18,7 @@ interface AttendanceTableProps {
   bonusPoints: BonusPoint[]
   customDailyValues: CustomDailyValue[]
   selectedMonth: string
-  user: User
+  user: UserType
   onBonusPointUpdate: (employeeId: string, date: string, points: number) => void
   onCustomValueUpdate: (employeeId: string, date: string, columnKey: string, value: string) => void
   onEmployeeUpdate: (employee: Employee) => void
@@ -39,6 +40,11 @@ export function AttendanceTable({
   const [editingBonus, setEditingBonus] = useState<{ employeeId: string; date: string } | null>(null)
   const [bonusValue, setBonusValue] = useState("")
   const [historyDialog, setHistoryDialog] = useState<{ employeeId: string; date: string } | null>(null)
+
+  // Helper to get employeeId (handle both id and _id fields from MongoDB)
+  const getEmployeeId = (employee: any): string => {
+    return employee.id || employee._id || ''
+  }
 
   // State for direct editing of custom daily values (including commission)
   const [editingCustomCell, setEditingCustomCell] = useState<{
@@ -109,7 +115,7 @@ export function AttendanceTable({
       filtered = filtered.filter(
         (emp) =>
           emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          emp.id.includes(searchTerm) ||
+          getEmployeeId(emp).includes(searchTerm) ||
           emp.department.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
@@ -119,36 +125,96 @@ export function AttendanceTable({
       filtered = filtered.filter((emp) => emp.department === departmentFilter)
     }
 
+    // Sort by ID (handle both id and _id fields)
+    filtered.sort((a, b) => {
+      const idA = getEmployeeId(a)
+      const idB = getEmployeeId(b)
+      return idA.localeCompare(idB, undefined, { numeric: true })
+    })
+
     return filtered
   }, [employees, user, searchTerm, departmentFilter])
 
   // Get attendance record for specific employee and date
   const getAttendanceRecord = (employeeId: string, day: number): AttendanceRecord | undefined => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    return attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
+    const record = attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
+    
+    // Debug first few calls
+    if (employeeId === "117" && day <= 5) {
+      console.log(`🔍 Looking for employee ${employeeId} on ${dateStr}:`)
+      console.log(`   - Found record:`, record)
+      console.log(`   - Total attendanceRecords:`, attendanceRecords.length)
+      console.log(`   - Sample records:`, attendanceRecords.slice(0, 2))
+    }
+    
+    return record
   }
 
   // Get bonus points for specific employee and date
   const getBonusPoints = (employeeId: string, day: number): number => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    const bonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    
+    // Find the employee to get both possible IDs
+    const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
+    
+    // Try to find bonus points with current employeeId first
+    let bonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    
+    // If not found and employee has alternative ID, try with that
+    if (!bonus && employee) {
+      const altId = employee.id !== employeeId ? employee.id : employee._id
+      if (altId && altId !== employeeId) {
+        bonus = bonusPoints.find((bp) => bp.employeeId === altId && bp.date === dateStr)
+      }
+    }
+    
     return bonus?.points || 0
   }
 
   // Get custom daily value for specific employee, date, and column key
   const getCustomDailyValue = (employeeId: string, dateStr: string, columnKey: string): string => {
-    const customValue = customDailyValues.find(
+    // Find the employee to get both possible IDs
+    const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
+    
+    // Try to find custom value with current employeeId first
+    let customValue = customDailyValues.find(
       (cdv) => cdv.employeeId === employeeId && cdv.date === dateStr && cdv.columnKey === columnKey,
     )
+    
+    // If not found and employee has alternative ID, try with that
+    if (!customValue && employee) {
+      const altId = employee.id !== employeeId ? employee.id : employee._id
+      if (altId && altId !== employeeId) {
+        customValue = customDailyValues.find(
+          (cdv) => cdv.employeeId === altId && cdv.date === dateStr && cdv.columnKey === columnKey,
+        )
+      }
+    }
+    
     return customValue?.value || ""
   }
 
   // Get bonus history for specific employee and date
   const getBonusHistory = (employeeId: string, day: number): BonusPoint[] => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    return bonusPoints
-      .filter((bp) => bp.employeeId === employeeId && bp.date === dateStr)
-      .sort((a, b) => new Date(b.editedAt).getTime() - new Date(a.editedAt).getTime())
+    
+    // Find the employee to get both possible IDs
+    const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
+    
+    // Get bonus points for current employeeId
+    let bonusHistory = bonusPoints.filter((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    
+    // If employee has alternative ID, also get bonus points for that ID
+    if (employee) {
+      const altId = employee.id !== employeeId ? employee.id : employee._id
+      if (altId && altId !== employeeId) {
+        const altBonusHistory = bonusPoints.filter((bp) => bp.employeeId === altId && bp.date === dateStr)
+        bonusHistory = [...bonusHistory, ...altBonusHistory]
+      }
+    }
+    
+    return bonusHistory.sort((a, b) => new Date(b.editedAt).getTime() - new Date(a.editedAt).getTime())
   }
 
   // Calculate total points for employee in month
@@ -238,9 +304,10 @@ export function AttendanceTable({
     }
 
     const data = filteredEmployees.map((employee, index) => {
+      const employeeId = getEmployeeId(employee)
       const row: any = {
         STT: index + 1,
-        ID: employee.id,
+        ID: employeeId,
         Tên: employee.name,
         "Tước vị": employee.title, // Use the updated title
         "Phòng ban": employee.department,
@@ -248,21 +315,21 @@ export function AttendanceTable({
 
       // Add daily points
       daysInMonth.forEach((dayInfo) => {
-        const record = getAttendanceRecord(employee.id, dayInfo.day)
-        const bonus = getBonusPoints(employee.id, dayInfo.day)
+        const record = getAttendanceRecord(employeeId, dayInfo.day)
+        const bonus = getBonusPoints(employeeId, dayInfo.day)
         const totalDayPoints = (record?.points || 0) + bonus
         row[`${dayInfo.dayName} ${dayInfo.day}`] = totalDayPoints // Include day name in header
       })
 
-      row["Tổng điểm"] = getTotalPoints(employee.id)
-      row["Điểm cộng thêm"] = daysInMonth.reduce((sum, dayInfo) => sum + getBonusPoints(employee.id, dayInfo.day), 0)
+      row["Tổng điểm"] = getTotalPoints(employeeId)
+      row["Điểm cộng thêm"] = daysInMonth.reduce((sum, dayInfo) => sum + getBonusPoints(employeeId, dayInfo.day), 0)
 
       // Commission is now a custom column, let's assume it's also a monthly value for export
-      row["Hoa hồng"] = getCustomDailyValue(employee.id, daysInMonth[0].dateStr, "commission")
+      row["Hoa hồng"] = getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission")
 
       // Add custom columns to export
       customColumns.forEach((col) => {
-        const monthlyCustomValue = getCustomDailyValue(employee.id, daysInMonth[0].dateStr, col.key)
+        const monthlyCustomValue = getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key)
         row[col.name] = monthlyCustomValue
       })
 
@@ -303,6 +370,43 @@ export function AttendanceTable({
 
   return (
     <div className="space-y-4">
+      {/* Debug Panel - Always visible at top */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-yellow-800">
+            <strong>Debug Info:</strong> selectedMonth: {selectedMonth} | attendanceRecords: {attendanceRecords.length}
+          </div>
+          <Button 
+            onClick={() => {
+              console.log(`🔍 DETAILED DEBUG INFO:`)
+              console.log(`   - selectedMonth: ${selectedMonth}`)
+              console.log(`   - attendanceRecords.length: ${attendanceRecords.length}`)
+              console.log(`   - Sample records:`, attendanceRecords.slice(0, 3))
+              console.log(`   - Looking for employee 117 on 2025-03-04:`, 
+                attendanceRecords.find(r => r.employeeId === "117" && r.date === "2025-03-04"))
+              
+              // Test getAttendanceRecord for March 4th (day 4 of March)
+              const record = getAttendanceRecord("117", 4)
+              console.log(`   - getAttendanceRecord("117", 4):`, record)
+              
+              // Test all employees for day 4
+              const allRecordsDay4 = employees.slice(0, 3).map(emp => ({
+                employeeId: emp.id,
+                record: getAttendanceRecord(emp.id, 4),
+                points: getAttendanceRecord(emp.id, 4)?.points || 0
+              }))
+              console.log(`   - All employees day 4:`, allRecordsDay4)
+              
+              alert(`Debug info logged to console! Records: ${attendanceRecords.length}`)
+            }}
+            size="sm"
+            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+          >
+            🔍 DEBUG CONSOLE
+          </Button>
+        </div>
+      </div>
+
       {/* Search and Filter Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-2">
@@ -333,10 +437,30 @@ export function AttendanceTable({
           )}
         </div>
 
-        <Button onClick={exportToExcel} className="flex items-center gap-2">
-          <Download className="w-4 h-4" />
-          Xuất Excel
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={exportToExcel} className="flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Xuất Excel
+          </Button>
+          <Button 
+            onClick={() => {
+              console.log(`🔍 DEBUG INFO:`)
+              console.log(`   - selectedMonth: ${selectedMonth}`)
+              console.log(`   - attendanceRecords.length: ${attendanceRecords.length}`)
+              console.log(`   - Sample records:`, attendanceRecords.slice(0, 3))
+              console.log(`   - Looking for employee 117 on 2025-03-04:`, 
+                attendanceRecords.find(r => r.employeeId === "117" && r.date === "2025-03-04"))
+              
+              // Test getAttendanceRecord for March 4th (day 4 of March)
+              const record = getAttendanceRecord("117", 4)
+              console.log(`   - getAttendanceRecord("117", 4):`, record)
+            }}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            🔍 Debug
+          </Button>
+        </div>
       </div>
 
       {/* Attendance Table */}
@@ -411,32 +535,33 @@ export function AttendanceTable({
             </thead>
             <tbody>
               {filteredEmployees.map((employee, index) => {
-                const totalPoints = getTotalPoints(employee.id)
+                const employeeId = getEmployeeId(employee)
+                const totalPoints = getTotalPoints(employeeId)
                 const totalBonusPoints = daysInMonth.reduce(
-                  (sum, dayInfo) => sum + getBonusPoints(employee.id, dayInfo.day),
+                  (sum, dayInfo) => sum + getBonusPoints(employeeId, dayInfo.day),
                   0,
                 )
 
                 return (
-                  <tr key={employee.id} className="border-b hover:bg-gray-50">
+                  <tr key={employeeId} className="border-b hover:bg-gray-50">
                     <td className="px-3 py-2 border-r sticky left-0 bg-white z-10">{index + 1}</td>
-                    <td className="px-3 py-2 border-r sticky left-12 bg-white z-10 font-mono text-xs">{employee.id}</td>
+                    <td className="px-3 py-2 border-r sticky left-12 bg-white z-10 font-mono text-xs">{getEmployeeId(employee)}</td>
                     <td className="px-3 py-2 border-r sticky left-32 bg-white z-10 font-medium">{employee.name}</td>
                     {/* Editable Title Cell */}
                     <td className="px-3 py-2 border-r sticky left-64 bg-white z-10 text-gray-600">
-                      {editingTitle?.employeeId === employee.id ? (
+                      {editingTitle?.employeeId === employeeId ? (
                         <Input
                           ref={titleInputRef}
                           type="text"
                           value={titleInputValue}
                           onChange={(e) => setTitleInputValue(e.target.value)}
-                          onBlur={() => handleSaveTitle(employee.id)}
-                          onKeyDown={(e) => handleTitleKeyDown(e, employee.id)}
+                          onBlur={() => handleSaveTitle(employeeId)}
+                          onKeyDown={(e) => handleTitleKeyDown(e, employeeId)}
                           className="h-8 text-center p-1"
                         />
                       ) : (
                         <button
-                          onClick={() => handleEditTitle(employee.id, employee.title)}
+                          onClick={() => handleEditTitle(employeeId, employee.title)}
                           className="flex items-center gap-1 mx-auto text-gray-600 hover:text-gray-800"
                         >
                           {employee.title}
@@ -446,8 +571,8 @@ export function AttendanceTable({
                     </td>
 
                     {daysInMonth.map((dayInfo) => {
-                      const record = getAttendanceRecord(employee.id, dayInfo.day)
-                      const bonus = getBonusPoints(employee.id, dayInfo.day)
+                      const record = getAttendanceRecord(employeeId, dayInfo.day)
+                      const bonus = getBonusPoints(employeeId, dayInfo.day)
                       const totalDayPoints = (record?.points || 0) + bonus
                       const isLowPoints = totalDayPoints <= 1
 
@@ -457,7 +582,7 @@ export function AttendanceTable({
                           className={`px-2 py-2 text-center border-r relative group cursor-pointer ${
                             isLowPoints ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
                           }`}
-                          onClick={() => bonus > 0 && showBonusHistory(employee.id, dayInfo.day)}
+                          onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
                         >
                           <div className="flex items-center justify-center gap-1">
                             <span>{totalDayPoints}</span>
@@ -465,7 +590,7 @@ export function AttendanceTable({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleBonusEdit(employee.id, dayInfo.day)
+                                  handleBonusEdit(employeeId, dayInfo.day)
                                 }}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity"
                               >
@@ -494,7 +619,7 @@ export function AttendanceTable({
                     <td className="px-3 py-2 text-center border-r font-semibold">{totalPoints}</td>
                     <td className="px-3 py-2 text-center border-r">
                       <button
-                        onClick={() => handleBonusEdit(employee.id, 1)} // Default to day 1 for monthly bonus
+                        onClick={() => handleBonusEdit(employeeId, 1)} // Default to day 1 for monthly bonus
                         className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
                       >
                         {totalBonusPoints}
@@ -503,7 +628,7 @@ export function AttendanceTable({
                     </td>
                     {/* Editable Commission Cell */}
                     <td className="px-3 py-2 text-center border-r">
-                      {editingCustomCell?.employeeId === employee.id &&
+                      {editingCustomCell?.employeeId === employeeId &&
                       editingCustomCell?.columnKey === "commission" ? (
                         <Input
                           ref={customInputRef}
@@ -516,10 +641,10 @@ export function AttendanceTable({
                         />
                       ) : (
                         <button
-                          onClick={() => handleCustomCellEdit(employee.id, "commission")}
+                          onClick={() => handleCustomCellEdit(employeeId, "commission")}
                           className="text-purple-600 hover:text-purple-800 flex items-center gap-1 mx-auto"
                         >
-                          {getCustomDailyValue(employee.id, daysInMonth[0].dateStr, "commission") || "Nhập"}
+                          {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission") || "Nhập"}
                           <DollarSign className="w-3 h-3" />
                         </button>
                       )}
@@ -527,7 +652,7 @@ export function AttendanceTable({
                     {/* Editable Custom Columns Cells */}
                     {customColumns.map((col) => (
                       <td key={col.key} className="px-3 py-2 text-center border-r">
-                        {editingCustomCell?.employeeId === employee.id && editingCustomCell?.columnKey === col.key ? (
+                        {editingCustomCell?.employeeId === employeeId && editingCustomCell?.columnKey === col.key ? (
                           <Input
                             ref={customInputRef}
                             type="text"
@@ -539,10 +664,10 @@ export function AttendanceTable({
                           />
                         ) : (
                           <button
-                            onClick={() => handleCustomCellEdit(employee.id, col.key)}
+                            onClick={() => handleCustomCellEdit(employeeId, col.key)}
                             className="text-gray-600 hover:text-gray-800 flex items-center gap-1 mx-auto"
                           >
-                            {getCustomDailyValue(employee.id, daysInMonth[0].dateStr, col.key) || "Nhập"}
+                            {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key) || "Nhập"}
                             <PlusSquare className="w-3 h-3" />
                           </button>
                         )}

@@ -1,19 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { AttendanceTable } from "@/components/attendance-table"
-import { LoginForm } from "@/components/login-form"
+import { LoginForm, UserType } from "@/components/login-form"
 import { Header } from "@/components/header"
 import { XMLImporter } from "@/components/xml-importer"
 import { EmployeeManagement } from "@/components/employee-management"
 import { DepartmentManagement } from "@/components/department-management"
 import { CheckInSettingsManagement } from "@/components/check-in-settings-management"
-import { useLocalStorage } from "@/hooks/use-local-storage"
-import { Calendar, Users, TrendingUp, FileSpreadsheet, UserPlus, Building2, Clock } from "lucide-react"
+import DataSyncManager from "@/components/data-sync-manager"
+// Removed useLocalStorage - now using MongoDB only
+import { Calendar, Users, TrendingUp, FileSpreadsheet, UserPlus, Building2, Clock, Download, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export interface Employee {
   id: string
+  _id?: string // MongoDB primary key (optional for compatibility)
   name: string
   title: string
   department: string
@@ -34,14 +36,6 @@ export interface BonusPoint {
   editedBy: string
   editedAt: string
   previousValue: number
-}
-
-export interface User {
-  username: string
-  password: string
-  role: "admin" | "truongphong"
-  department?: string
-  name: string
 }
 
 export interface Department {
@@ -78,142 +72,209 @@ export interface CustomDailyValue {
   previousValue: string
 }
 
-// Khởi tạo với danh sách rỗng - sẽ được tạo từ XML
+// Initial data - for reference only, actual data comes from MongoDB
 const initialEmployees: Employee[] = []
-
-// Danh sách phòng ban mặc định
-const initialDepartments: Department[] = [
-  {
-    id: "dept-001",
-    name: "Phòng Kỹ thuật",
-    createdAt: new Date().toISOString(),
-    createdBy: "system",
-  },
-  {
-    id: "dept-002",
-    name: "Phòng Kinh doanh",
-    createdAt: new Date().toISOString(),
-    createdBy: "system",
-  },
-  {
-    id: "dept-003",
-    name: "Phòng Hành chính",
-    createdAt: new Date().toISOString(),
-    createdBy: "system",
-  },
-]
-
-// Danh sách tài khoản mặc định với các tài khoản demo
-const defaultUsers: User[] = [
-  {
-    username: "admin",
-    password: "admin123",
-    role: "admin",
-    name: "Quản trị viên hệ thống",
-  },
-  {
-    username: "thao",
-    password: "thao123",
-    role: "truongphong",
-    name: "TP Thảo",
-    department: "Phòng Kinh doanh",
-  },
-  {
-    username: "minh",
-    password: "minh123",
-    role: "truongphong",
-    name: "Trưởng phòng Minh",
-    department: "Phòng Kỹ thuật",
-  },
-  {
-    username: "demo",
-    password: "demo123",
-    role: "truongphong",
-    name: "Demo User",
-    department: "Phòng Hành chính",
-  },
-]
+const initialDepartments: Department[] = []
 
 // NEW: Default check-in settings for each day of the week with shifts
 const defaultCheckInSettings: CheckInSettings = {
   0: {
-    // Sunday
+    // Sunday - Special timing
     shifts: [
-      { id: "sun-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "sun-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "sun-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "08:45", points: 1 },
+      { id: "sun-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:45", points: 1 },
     ],
   },
   1: {
     // Monday
     shifts: [
-      { id: "mon-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "mon-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "mon-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "mon-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   2: {
     // Tuesday
     shifts: [
-      { id: "tue-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "tue-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "tue-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "tue-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   3: {
     // Wednesday
     shifts: [
-      { id: "wed-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "wed-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "wed-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "wed-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   4: {
     // Thursday
     shifts: [
-      { id: "thu-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "thu-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "thu-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "thu-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   5: {
     // Friday
     shifts: [
-      { id: "fri-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "fri-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "fri-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "fri-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
   6: {
     // Saturday
     shifts: [
-      { id: "sat-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-      { id: "sat-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+      { id: "sat-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+      { id: "sat-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
     ],
   },
 }
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = useLocalStorage<User | null>("currentUser", null)
-  const [users, setUsers] = useLocalStorage<User[]>("users", defaultUsers)
-  const [departments, setDepartments] = useLocalStorage<Department[]>("departments", initialDepartments)
-  const [employees, setEmployees] = useLocalStorage<Employee[]>("employees", initialEmployees)
-  const [attendanceRecords, setAttendanceRecords] = useLocalStorage<AttendanceRecord[]>("attendanceRecords", [])
-  const [bonusPoints, setBonusPoints] = useLocalStorage<BonusPoint[]>("bonusPoints", [])
-  const [customDailyValues, setCustomDailyValues] = useLocalStorage<CustomDailyValue[]>("customDailyValues", []) // New state for custom values
-  const [checkInSettings, setCheckInSettings] = useLocalStorage<CheckInSettings>(
-    "checkInSettings",
-    defaultCheckInSettings,
-  )
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null)
+  
+  // MIGRATED: All data now uses MongoDB instead of localStorage
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([]) // MongoDB employees only
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [bonusPoints, setBonusPoints] = useState<BonusPoint[]>([])
+  const [customDailyValues, setCustomDailyValues] = useState<CustomDailyValue[]>([])
+  const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings)
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    // Use March 2025 where we have sample data
+    return "2025-03"
+    // Use current month to test with real data  
+    // const now = new Date()
+    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
   const [showEmployeeManagement, setShowEmployeeManagement] = useState(false)
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
   const [showCheckInSettingsManagement, setShowCheckInSettingsManagement] = useState(false)
 
-  const handleLogin = (userData: User) => {
+  // Load ALL MongoDB data on component mount
+  useEffect(() => {
+    const fetchMongoData = async () => {
+      try {
+        // Load employees from MongoDB
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+          console.log(`✅ Loaded ${employeesResult.data.length} employees from MongoDB`)
+        }
+
+        // Load departments from MongoDB
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+          console.log(`✅ Loaded ${departmentsResult.data.length} departments from MongoDB`)
+          
+          // Auto-seed if no departments exist
+          if (departmentsResult.data.length === 0) {
+            console.log('🌱 No departments found, seeding initial data...')
+            const seedResponse = await fetch('/api/seed-data', { method: 'POST' })
+            const seedResult = await seedResponse.json()
+            if (seedResult.success) {
+              console.log('✅ Initial data seeded successfully')
+              // Reload departments after seeding
+              const newDepartmentsResponse = await fetch('/api/departments')
+              const newDepartmentsResult = await newDepartmentsResponse.json()
+              if (newDepartmentsResult.success) {
+                setDepartments(newDepartmentsResult.data)
+                console.log(`✅ Loaded ${newDepartmentsResult.data.length} departments after seeding`)
+              }
+            }
+          }
+        }
+
+        // Load attendance records from MongoDB for the selected month
+        console.log(`🔄 Fetching attendance records for month: ${selectedMonth}`)
+        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+        console.log(`📡 Attendance API response status:`, attendanceResponse.status)
+        
+        const attendanceResult = await attendanceResponse.json()
+        console.log(`📋 Attendance API result:`, attendanceResult)
+        
+        if (attendanceResult.success) {
+          setAttendanceRecords(attendanceResult.data)
+          console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
+          console.log('📋 Sample attendance records:', attendanceResult.data.slice(0, 3))
+          
+          // Debug: Check if employees match attendance records
+          if (attendanceResult.data.length > 0) {
+            const attendanceEmployeeIds = [...new Set(attendanceResult.data.map((r: AttendanceRecord) => r.employeeId))]
+            console.log('👥 Attendance Employee IDs:', attendanceEmployeeIds.slice(0, 10))
+            console.log('👥 MongoDB Employee IDs:', employeesResult.data?.slice(0, 10).map((e: Employee) => e.id || e._id))
+            
+            // Check for matches
+            const matches = attendanceEmployeeIds.filter(aId => 
+              employeesResult.data?.some((emp: Employee) => emp.id === aId || emp._id === aId)
+            )
+            console.log(`🔗 Employee ID matches: ${matches.length}/${attendanceEmployeeIds.length}`)
+          }
+        } else {
+          console.log('❌ Failed to load attendance records:', attendanceResult)
+        }
+
+        // Load bonus points from MongoDB for the selected month
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+          console.log(`✅ Loaded ${bonusPointsResult.data.length} bonus points from MongoDB`)
+        }
+
+        // Load custom daily values from MongoDB for the selected month
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+          console.log(`✅ Loaded ${customValuesResult.data.length} custom daily values from MongoDB`)
+        }
+
+        // Load check-in settings from MongoDB
+        const settingsResponse = await fetch('/api/check-in-settings')
+        const settingsResult = await settingsResponse.json()
+        if (settingsResult.success) {
+          setCheckInSettings(settingsResult.data)
+          console.log(`✅ Loaded check-in settings from MongoDB`)
+        } else {
+          console.log('⚠️ Failed to load check-in settings, using defaults')
+          // Keep default settings if MongoDB load fails
+        }
+      } catch (error) {
+        console.error('Error loading MongoDB data:', error)
+      }
+    }
+    
+    if (currentUser) {
+      fetchMongoData()
+    }
+  }, [currentUser, selectedMonth])
+
+  const handleLogin = (userData: UserType) => {
     setCurrentUser(userData)
+    // Store in sessionStorage for browser refresh (optional)
+    sessionStorage.setItem('currentUser', JSON.stringify(userData))
   }
 
   const handleLogout = () => {
     setCurrentUser(null)
+    sessionStorage.removeItem('currentUser')
   }
+
+  // Check sessionStorage on mount for user persistence
+  useEffect(() => {
+    const storedUser = sessionStorage.getItem('currentUser')
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser))
+      } catch (error) {
+        console.error('Failed to parse stored user:', error)
+        sessionStorage.removeItem('currentUser')
+      }
+    }
+  }, [])
 
   const handleXMLImport = (records: AttendanceRecord[], newEmployees: Employee[]) => {
     // Cập nhật danh sách nhân viên (kiểm tra trùng)
@@ -249,109 +310,296 @@ export default function Home() {
     })
   }
 
-  const handleBonusPointUpdate = (employeeId: string, date: string, points: number) => {
+  const handleBonusPointUpdate = async (employeeId: string, date: string, points: number) => {
     if (!currentUser) return
 
-    const existingBonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === date)
+    try {
+      const response = await fetch('/api/bonus-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          date,
+          points,
+          editedBy: currentUser.username,
+          reason: 'Manual adjustment from UI'
+        })
+      })
 
-    const newBonusPoint: BonusPoint = {
-      employeeId,
-      date,
-      points,
-      editedBy: currentUser.username,
-      editedAt: new Date().toISOString(),
-      previousValue: existingBonus?.points || 0,
+      const result = await response.json()
+      if (result.success) {
+        // Reload bonus points for current month
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+          console.log(`✅ Updated bonus points for employee ${employeeId}`)
+        }
+      } else {
+        console.error('Failed to update bonus points:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating bonus points:', error)
     }
-
-    setBonusPoints((prev) => {
-      const filtered = prev.filter((bp) => !(bp.employeeId === employeeId && bp.date === date))
-      return [...filtered, newBonusPoint]
-    })
   }
 
   // New handler for custom daily values
-  const handleCustomValueUpdate = (employeeId: string, date: string, columnKey: string, value: string) => {
+  const handleCustomValueUpdate = async (employeeId: string, date: string, columnKey: string, value: string) => {
     if (!currentUser) return
 
-    const existingValue = customDailyValues.find(
-      (cdv) => cdv.employeeId === employeeId && cdv.date === date && cdv.columnKey === columnKey,
-    )
+    try {
+      const response = await fetch('/api/custom-daily-values', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          date,
+          columnKey,
+          value,
+          editedBy: currentUser.username
+        })
+      })
 
-    const newCustomValue: CustomDailyValue = {
-      employeeId,
-      date,
-      columnKey,
-      value,
-      editedBy: currentUser.username,
-      editedAt: new Date().toISOString(),
-      previousValue: existingValue?.value || "",
+      const result = await response.json()
+      if (result.success) {
+        // Reload custom daily values for current month
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+          console.log(`✅ Updated custom value for employee ${employeeId}`)
+        }
+      } else {
+        console.error('Failed to update custom value:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating custom value:', error)
     }
-
-    setCustomDailyValues((prev) => {
-      const filtered = prev.filter(
-        (cdv) => !(cdv.employeeId === employeeId && cdv.date === date && cdv.columnKey === columnKey),
-      )
-      return [...filtered, newCustomValue]
-    })
   }
 
-  const handleEmployeeAdd = (employee: Employee) => {
-    setEmployees((prev) => [...prev, employee])
+  const handleEmployeeAdd = async (employee: Employee) => {
+    try {
+      const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(employee)
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload employees
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+          console.log(`✅ Added employee: ${employee.name}`)
+        }
+      } else {
+        console.error('Failed to add employee:', result.message)
+      }
+    } catch (error) {
+      console.error('Error adding employee:', error)
+    }
   }
 
-  const handleEmployeeUpdate = (updatedEmployee: Employee) => {
-    setEmployees((prev) => prev.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp)))
+  const handleEmployeeUpdate = async (updatedEmployee: Employee) => {
+    try {
+      const response = await fetch(`/api/employees`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEmployee)
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload employees
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+          console.log(`✅ Updated employee: ${updatedEmployee.name}`)
+        }
+      } else {
+        console.error('Failed to update employee:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating employee:', error)
+    }
   }
 
-  const handleEmployeeDelete = (employeeId: string) => {
-    setEmployees((prev) => prev.filter((emp) => emp.id !== employeeId))
-    // Xóa luôn dữ liệu chấm công và điểm cộng
-    setAttendanceRecords((prev) => prev.filter((record) => record.employeeId !== employeeId))
-    setBonusPoints((prev) => prev.filter((bp) => bp.employeeId !== employeeId))
-    setCustomDailyValues((prev) => prev.filter((cdv) => cdv.employeeId !== employeeId)) // Delete custom values too
+  const handleEmployeeDelete = async (employeeId: string) => {
+    try {
+      const response = await fetch(`/api/employees?id=${employeeId}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload employees and related data
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+          console.log(`✅ Deleted employee: ${employeeId}`)
+        }
+
+        // Reload attendance records and bonus points for current month
+        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+        const attendanceResult = await attendanceResponse.json()
+        if (attendanceResult.success) {
+          setAttendanceRecords(attendanceResult.data)
+        }
+
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+        }
+
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+        }
+      } else {
+        console.error('Failed to delete employee:', result.message)
+      }
+    } catch (error) {
+      console.error('Error deleting employee:', error)
+    }
   }
 
-  const handleUserAdd = (user: User) => {
-    setUsers((prev) => [...prev, user])
+  // Temporary stub functions for user management - these should be replaced with MongoDB API calls
+  const handleUserAdd = (user: UserType) => {
+    console.log('User add should call MongoDB API:', user)
+    // TODO: Call /api/users POST
   }
 
-  const handleUserUpdate = (updatedUser: User) => {
-    setUsers((prev) => prev.map((user) => (user.username === updatedUser.username ? updatedUser : user)))
+  const handleUserUpdate = (updatedUser: UserType) => {
+    console.log('User update should call MongoDB API:', updatedUser)
+    // TODO: Call /api/users PUT
   }
 
   const handleUserDelete = (username: string) => {
-    setUsers((prev) => prev.filter((user) => user.username !== username))
+    console.log('User delete should call MongoDB API:', username)
+    // TODO: Call /api/users DELETE
   }
 
-  const handleDepartmentAdd = (department: Department) => {
-    setDepartments((prev) => [...prev, department])
+  const handleDepartmentAdd = async (department: Department) => {
+    try {
+      const response = await fetch('/api/departments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: department.name,
+          createdBy: currentUser?.username || 'system'
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload departments
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+          console.log(`✅ Added department: ${department.name}`)
+        }
+      } else {
+        console.error('Failed to add department:', result.message)
+      }
+    } catch (error) {
+      console.error('Error adding department:', error)
+    }
   }
 
-  const handleDepartmentUpdate = (updatedDepartment: Department) => {
-    setDepartments((prev) => prev.map((dept) => (dept.id === updatedDepartment.id ? updatedDepartment : dept)))
+  const handleDepartmentUpdate = async (updatedDepartment: Department) => {
+    try {
+      const response = await fetch('/api/departments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: updatedDepartment.id,
+          name: updatedDepartment.name,
+          isActive: true
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Reload departments
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+          console.log(`✅ Updated department: ${updatedDepartment.name}`)
+        }
+      } else {
+        console.error('Failed to update department:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating department:', error)
+    }
   }
 
-  const handleDepartmentDelete = (departmentId: string) => {
-    const department = departments.find((d) => d.id === departmentId)
-    if (!department) return
+  const handleDepartmentDelete = async (departmentId: string) => {
+    try {
+      const response = await fetch(`/api/departments?id=${departmentId}`, {
+        method: 'DELETE'
+      })
 
-    // Xóa tất cả nhân viên thuộc phòng ban này
-    setEmployees((prev) => prev.filter((emp) => emp.department !== department.name))
-    // Xóa tài khoản trưởng phòng thuộc phòng ban này
-    setUsers((prev) => prev.filter((user) => user.department !== department.name))
-    // Xóa phòng ban
-    setDepartments((prev) => prev.filter((dept) => dept.id !== departmentId))
+      const result = await response.json()
+      if (result.success) {
+        // Reload departments and employees
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsResult = await departmentsResponse.json()
+        if (departmentsResult.success) {
+          setDepartments(departmentsResult.data)
+        }
+
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+        }
+
+        console.log(`✅ Deleted department: ${departmentId}`)
+      } else {
+        console.error('Failed to delete department:', result.message)
+      }
+    } catch (error) {
+      console.error('Error deleting department:', error)
+    }
   }
 
-  const handleCheckInSettingsSave = (newSettings: CheckInSettings) => {
-    setCheckInSettings(newSettings)
+  const handleCheckInSettingsSave = async (newSettings: CheckInSettings) => {
+    try {
+      const response = await fetch('/api/check-in-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: newSettings,
+          updatedBy: currentUser?.username || 'system'
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        setCheckInSettings(newSettings)
+        console.log(`✅ Updated check-in settings`)
+      } else {
+        console.error('Failed to update check-in settings:', result.message)
+      }
+    } catch (error) {
+      console.error('Error updating check-in settings:', error)
+    }
   }
 
   if (!currentUser) {
-    return <LoginForm onLogin={handleLogin} users={users} />
+    return <LoginForm onLogin={handleLogin} />
   }
 
-  // Calculate stats
+  // Calculate stats - MongoDB only
   const filteredEmployees =
     currentUser.role === "admin" ? employees : employees.filter((emp) => emp.department === currentUser.department)
 
@@ -370,56 +618,116 @@ export default function Home() {
       <Header user={currentUser} onLogout={handleLogout} />
 
       <div className="container mx-auto px-4 py-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
-              </div>
+        {/* Welcome Header */}
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">
-                  {currentUser.role === "admin" ? "Tổng nhân viên" : "Nhân viên phòng"}
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Hệ thống chấm công HomeLee
+                </h1>
+                <p className="text-gray-600">
+                  Chào mừng <span className="font-semibold text-blue-600">{currentUser.name}</span> 
+                  <span className="text-sm bg-gray-100 px-2 py-1 rounded-full ml-2">
+                    {currentUser.role === "admin" ? "Quản trị viên" : 
+                     currentUser.role === "truongphong" ? "Trưởng phòng" : "Nhân viên"}
+                  </span>
                 </p>
-                <p className="text-2xl font-bold text-gray-900">{totalEmployees}</p>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Đã chấm công</p>
-                <p className="text-2xl font-bold text-gray-900">{activeEmployees}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Lượt chấm công</p>
-                <p className="text-2xl font-bold text-gray-900">{totalCheckIns}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FileSpreadsheet className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">
-                  {currentUser.role === "admin" ? `${userDepartments.length} phòng ban` : "Tháng hiện tại"}
+              <div className="text-right">
+                <p className="text-sm text-gray-500">
+                  {new Date().toLocaleDateString('vi-VN', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-xs text-gray-400 mt-1">
+                  Tháng báo cáo: {new Date(selectedMonth + "-01").toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-700">
+                      {currentUser.role === "admin" ? "Tổng nhân viên" : "Nhân viên phòng"}
+                    </p>
+                    <p className="text-xs text-blue-600">{currentUser.role === "admin" ? "Toàn công ty" : currentUser.department}</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-blue-900">{totalEmployees}</p>
+                {employees.length > 0 && (
+                  <p className="text-xs text-blue-500 mt-1">
+                    📊 MongoDB: {employees.length} nhân viên
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-sm border border-green-200 p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <TrendingUp className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-green-700">Đã chấm công</p>
+                    <p className="text-xs text-green-600">Nhân viên hoạt động</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-green-900">{activeEmployees}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl shadow-sm border border-orange-200 p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <Calendar className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-orange-700">Lượt chấm công</p>
+                    <p className="text-xs text-orange-600">Tháng hiện tại</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-orange-900">{totalCheckIns}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-sm border border-purple-200 p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <FileSpreadsheet className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-purple-700">
+                      {currentUser.role === "admin" ? "Phòng ban" : "Báo cáo"}
+                    </p>
+                    <p className="text-xs text-purple-600">
+                      {currentUser.role === "admin" ? "Đang quản lý" : "Tháng hiện tại"}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-purple-900">
                   {currentUser.role === "admin"
                     ? userDepartments.length
                     : `${selectedMonth.split("-")[1]}/${selectedMonth.split("-")[0]}`}
@@ -429,105 +737,267 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-gray-900">Bảng chấm công</h2>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <label htmlFor="month-select" className="text-sm font-medium text-gray-700">
-                  Tháng:
-                </label>
-                <input
-                  id="month-select"
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+        {/* Action Panels - FIXED LAYOUT */}
+        <div className="space-y-6 mb-8">
+          
+          {/* PRIMARY SECTION: Data Sync (Only for Admin) */}
+          {currentUser.role === "admin" && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-sm">
+                  <Download className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-blue-900">🔄 Đồng Bộ Dữ Liệu ZKTeco</h2>
+                  <p className="text-sm text-blue-700">Lấy dữ liệu từ máy chấm công và lưu vào MongoDB (CHÍNH)</p>
+                </div>
+              </div>
+              <DataSyncManager />
+            </div>
+          )}
+
+          {/* SECONDARY SECTION: Controls Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            
+            {/* Time Selection Panel */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">📅 Thời Gian Báo Cáo</h3>
+                  <p className="text-xs text-gray-500">Chọn tháng để xem</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="month-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Tháng báo cáo:
+                  </label>
+                  <input
+                    id="month-select"
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                  />
+                </div>
+                <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                  📊 Hiển thị: {new Date(selectedMonth + "-01").toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {currentUser.role === "admin" && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDepartmentManagement(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Building2 className="w-4 h-4" />
-                    Quản lý phòng ban
-                  </Button>
+            {/* Management Panel */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">⚙️ Quản Lý Hệ Thống</h3>
+                  <p className="text-xs text-gray-500">Cấu hình và quản lý</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {currentUser.role === "admin" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDepartmentManagement(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <Building2 className="w-4 h-4" />
+                      Quản lý phòng ban
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowEmployeeManagement(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Quản lý nhân sự
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCheckInSettingsManagement(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <Clock className="w-4 h-4" />
+                      Cấu hình giờ làm việc
+                    </Button>
+                  </>
+                )}
+                {currentUser.role === "truongphong" && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowEmployeeManagement(true)}
-                    className="flex items-center gap-2"
+                    className="w-full justify-start gap-2 h-10"
                   >
                     <UserPlus className="w-4 h-4" />
-                    Quản lý nhân sự
+                    Quản lý nhân viên
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowCheckInSettingsManagement(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Clock className="w-4 h-4" />
-                    Cấu hình giờ
-                  </Button>
-                </>
-              )}
-              {currentUser.role === "truongphong" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowEmployeeManagement(true)}
-                  className="flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Quản lý nhân viên
-                </Button>
-              )}
-              <XMLImporter
-                onImport={handleXMLImport}
-                user={currentUser}
-                departments={departments}
-                checkInSettings={checkInSettings}
-              />
+                )}
+                {(currentUser.role === "admin" || currentUser.role === "truongphong") && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 text-center">
+                      Quyền {currentUser.role === "admin" ? "quản trị viên" : "trưởng phòng"}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Legacy Import Panel - Collapsed by default */}
+            <div className="bg-yellow-50 rounded-xl shadow-sm border border-yellow-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <FileSpreadsheet className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-yellow-800">🔧 Import Khác</h3>
+                  <p className="text-xs text-yellow-600">Dự phòng hoặc thủ công</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="text-sm text-yellow-700 bg-yellow-100 p-3 rounded-lg">
+                  <p className="font-medium mb-1">⚠️ Lưu ý:</p>
+                  <p className="text-xs">Khuyến nghị dùng "Đồng Bộ ZKTeco" ở trên thay vì import thủ công.</p>
+                </div>
+                
+                {/* Uncomment if need legacy import */}
+                {/* 
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-yellow-700 hover:text-yellow-800">
+                    🔽 Hiện tùy chọn import cũ
+                  </summary>
+                  <div className="mt-3 pt-3 border-t border-yellow-200">
+                    <XMLImporter
+                      onImport={handleXMLImport}
+                      user={currentUser}
+                      departments={departments}
+                      checkInSettings={checkInSettings}
+                    />
+                  </div>
+                </details>
+                */}
+                
+                <p className="text-xs text-yellow-600 italic">
+                  💡 Import XML và ZK cũ đã được thay thế bằng DataSync ở trên
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Show message if no employees */}
-        {employees.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-yellow-600" />
-              <p className="text-yellow-800">
-                <strong>Chưa có dữ liệu nhân viên.</strong> Vui lòng import file XML hoặc thêm nhân viên thủ công để tạo
-                danh sách nhân viên và dữ liệu chấm công.
-              </p>
+        {/* Data Status and Attendance Table */}
+        {employees.length === 0 ? (
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 rounded-lg p-6 mb-8">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FileSpreadsheet className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+                  Chưa có dữ liệu nhân viên
+                </h3>
+                <p className="text-yellow-700 mb-4">
+                  Để bắt đầu sử dụng hệ thống chấm công, bạn cần có dữ liệu nhân viên trong hệ thống.
+                </p>
+                <div className="space-y-2 text-sm text-yellow-700">
+                  <p className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    Import dữ liệu từ máy chấm công ZKTeco
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    Import file XML từ hệ thống cũ
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    Thêm nhân viên thủ công qua chức năng quản lý
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-
-        {/* Attendance Table */}
-        {employees.length > 0 && (
-          <AttendanceTable
-            employees={employees}
-            attendanceRecords={attendanceRecords}
-            bonusPoints={bonusPoints}
-            customDailyValues={customDailyValues} // Pass custom values
-            selectedMonth={selectedMonth}
-            user={currentUser}
-            onBonusPointUpdate={handleBonusPointUpdate}
-            onCustomValueUpdate={handleCustomValueUpdate} // Pass custom value update handler
-            onEmployeeUpdate={handleEmployeeUpdate} // Pass employee update handler
-          />
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Bảng chấm công</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Dữ liệu chấm công tháng {new Date(selectedMonth + "-01").toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>{activeEmployees} đã chấm công</span>
+                  </div>
+                  <span>•</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>{totalCheckIns} lượt check-in</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              {/* Debug info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h3 className="font-bold text-blue-800">🔍 DEBUG INFO (MongoDB Only):</h3>
+                <div className="text-sm text-blue-700">
+                  <div>currentUser: {currentUser?.name} ({currentUser?.role})</div>
+                  <div>employees: {employees.length}</div>
+                  <div>departments: {departments.length}</div>
+                  <div>attendanceRecords: {attendanceRecords.length}</div>
+                  <div>bonusPoints: {bonusPoints.length}</div>
+                  <div>customDailyValues: {customDailyValues.length}</div>
+                  <div>selectedMonth: {selectedMonth}</div>
+                  {bonusPoints.length > 0 && (
+                    <div className="mt-2 p-2 bg-yellow-50 rounded">
+                      <div className="font-medium">Sample Bonus Points:</div>
+                      {bonusPoints.slice(0, 3).map((bp, i) => (
+                        <div key={i} className="text-xs">
+                          {bp.employeeId} | {bp.date} | {bp.points}đ
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {employees.length > 0 && (
+                    <div className="mt-2 p-2 bg-green-50 rounded">
+                      <div className="font-medium">Sample MongoDB Employees:</div>
+                      {employees.slice(0, 3).map((emp, i) => (
+                        <div key={i} className="text-xs">
+                          ID: {emp.id || 'none'} | _ID: {emp._id || 'none'} | {emp.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <AttendanceTable
+                employees={employees}
+                attendanceRecords={attendanceRecords}
+                bonusPoints={bonusPoints} // MongoDB data
+                customDailyValues={customDailyValues} // MongoDB data
+                selectedMonth={selectedMonth}
+                user={currentUser}
+                onBonusPointUpdate={handleBonusPointUpdate}
+                onCustomValueUpdate={handleCustomValueUpdate}
+                onEmployeeUpdate={handleEmployeeUpdate}
+              />
+            </div>
+          </div>
         )}
 
         {/* Department Management Modal */}
@@ -535,7 +1005,7 @@ export default function Home() {
           <DepartmentManagement
             departments={departments}
             employees={employees}
-            users={users}
+            users={[]} // TODO: Fetch from MongoDB API
             onClose={() => setShowDepartmentManagement(false)}
             onDepartmentAdd={handleDepartmentAdd}
             onDepartmentUpdate={handleDepartmentUpdate}
@@ -548,7 +1018,7 @@ export default function Home() {
         {showEmployeeManagement && (
           <EmployeeManagement
             employees={employees}
-            users={users}
+            users={[]} // TODO: Fetch from MongoDB API
             departments={departments}
             currentUser={currentUser}
             onClose={() => setShowEmployeeManagement(false)}
