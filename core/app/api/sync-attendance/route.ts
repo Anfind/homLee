@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         )
         
         // Categorize check-ins để tương thích với existing schema
-        const { morningCheckIn, afternoonCheckIn } = categorizeCheckIns(groupData.checkIns)
+        const { morningCheckIn, afternoonCheckIn } = categorizeCheckIns(groupData.checkIns, groupData.date)
         
         // Build attendance record
         const attendanceData = {

@@ -5,6 +5,7 @@ import { AttendanceTable } from "@/components/attendance-table"
 import { LoginForm, UserType } from "@/components/login-form"
 import { Header } from "@/components/header"
 import { XMLImporter } from "@/components/xml-importer"
+import { XMLImportManager } from "@/components/xml-import-manager"
 import { EmployeeManagement } from "@/components/employee-management"
 import { DepartmentManagement } from "@/components/department-management"
 import { CheckInSettingsManagement } from "@/components/check-in-settings-management"
@@ -36,6 +37,15 @@ export interface BonusPoint {
   editedBy: string
   editedAt: string
   previousValue: number
+}
+
+export interface PaginationData {
+  page: number
+  limit: number
+  totalCount: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
 }
 
 export interface Department {
@@ -138,6 +148,17 @@ export default function Home() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [bonusPoints, setBonusPoints] = useState<BonusPoint[]>([])
   const [customDailyValues, setCustomDailyValues] = useState<CustomDailyValue[]>([])
+  
+  // Pagination state
+  const [pagination, setPagination] = useState<PaginationData>({
+    page: 1,
+    limit: 40,
+    totalCount: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  })
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false)
   const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     // Use March 2025 where we have sample data
@@ -149,6 +170,7 @@ export default function Home() {
   const [showEmployeeManagement, setShowEmployeeManagement] = useState(false)
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
   const [showCheckInSettingsManagement, setShowCheckInSettingsManagement] = useState(false)
+  const [showXMLImport, setShowXMLImport] = useState(false)
 
   // Load ALL MongoDB data on component mount
   useEffect(() => {
@@ -187,9 +209,9 @@ export default function Home() {
           }
         }
 
-        // Load attendance records from MongoDB for the selected month
-        console.log(`🔄 Fetching attendance records for month: ${selectedMonth}`)
-        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+        // Load attendance records from MongoDB for the selected month with pagination
+        console.log(`🔄 Fetching attendance records for month: ${selectedMonth} (page 1)`)
+        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}&page=1&limit=40`)
         console.log(`📡 Attendance API response status:`, attendanceResponse.status)
         
         const attendanceResult = await attendanceResponse.json()
@@ -197,7 +219,8 @@ export default function Home() {
         
         if (attendanceResult.success) {
           setAttendanceRecords(attendanceResult.data)
-          console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
+          setPagination(attendanceResult.pagination)
+          console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth} (page 1/${attendanceResult.pagination.totalPages}, total: ${attendanceResult.pagination.totalCount})`)
           console.log('📋 Sample attendance records:', attendanceResult.data.slice(0, 3))
           
           // Debug: Check if employees match attendance records
@@ -244,6 +267,8 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error loading MongoDB data:', error)
+      } finally {
+        setIsLoadingAttendance(false)
       }
     }
     
@@ -251,6 +276,66 @@ export default function Home() {
       fetchMongoData()
     }
   }, [currentUser, selectedMonth])
+
+  // Pagination handlers
+  const loadAttendancePage = async (page: number) => {
+    try {
+      setIsLoadingAttendance(true)
+      console.log(`🔄 Loading attendance page ${page}...`)
+      
+      const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}&page=${page}&limit=${pagination.limit}`)
+      const attendanceResult = await attendanceResponse.json()
+      
+      if (attendanceResult.success) {
+        setAttendanceRecords(attendanceResult.data)
+        setPagination(attendanceResult.pagination)
+        console.log(`✅ Loaded page ${page}/${attendanceResult.pagination.totalPages} (${attendanceResult.data.length} records)`)
+        
+        // Also reload bonus points and custom daily values for the month (no pagination needed)
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+          console.log(`✅ Reloaded ${bonusPointsResult.data.length} bonus points`)
+        }
+
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+          console.log(`✅ Reloaded ${customValuesResult.data.length} custom daily values`)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading attendance page:', error)
+    } finally {
+      setIsLoadingAttendance(false)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (pagination.hasNextPage) {
+      loadAttendancePage(pagination.page + 1)
+    }
+  }
+
+  const handlePrevPage = () => {
+    if (pagination.hasPrevPage) {
+      loadAttendancePage(pagination.page - 1)
+    }
+  }
+
+  const handlePageSelect = (page: number) => {
+    if (page !== pagination.page && page >= 1 && page <= pagination.totalPages) {
+      loadAttendancePage(page)
+    }
+  }
+
+  // Handle month change with pagination reset
+  const handleMonthChange = (newMonth: string) => {
+    setSelectedMonth(newMonth)
+    setPagination(prev => ({ ...prev, page: 1 })) // Reset to page 1
+  }
 
   const handleLogin = (userData: UserType) => {
     setCurrentUser(userData)
@@ -779,7 +864,7 @@ export default function Home() {
                     id="month-select"
                     type="month"
                     value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    onChange={(e) => handleMonthChange(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                   />
                 </div>
@@ -829,6 +914,15 @@ export default function Home() {
                     >
                       <Clock className="w-4 h-4" />
                       Cấu hình giờ làm việc
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowXMLImport(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <Download className="w-4 h-4" />
+                      Import XML/Excel
                     </Button>
                   </>
                 )}
@@ -992,9 +1086,14 @@ export default function Home() {
                 customDailyValues={customDailyValues} // MongoDB data
                 selectedMonth={selectedMonth}
                 user={currentUser}
+                pagination={pagination}
+                isLoading={isLoadingAttendance}
                 onBonusPointUpdate={handleBonusPointUpdate}
                 onCustomValueUpdate={handleCustomValueUpdate}
                 onEmployeeUpdate={handleEmployeeUpdate}
+                onPageChange={handlePageSelect}
+                onNextPage={handleNextPage}
+                onPrevPage={handlePrevPage}
               />
             </div>
           </div>
@@ -1038,6 +1137,30 @@ export default function Home() {
             onSave={handleCheckInSettingsSave}
             onClose={() => setShowCheckInSettingsManagement(false)}
           />
+        )}
+
+        {/* XML Import Manager Modal */}
+        {showXMLImport && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Import Dữ Liệu Chấm Công từ XML/Excel
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowXMLImport(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  ✕
+                </Button>
+              </div>
+              <div className="p-6">
+                <XMLImportManager />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

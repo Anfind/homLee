@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Search, Download, History, Edit3, DollarSign, PlusSquare } from "lucide-react"
-import type { Employee, AttendanceRecord, BonusPoint, CustomDailyValue } from "@/app/page"
+import type { Employee, AttendanceRecord, BonusPoint, CustomDailyValue, PaginationData } from "@/app/page"
 import type { UserType } from "@/components/login-form"
 import * as XLSX from "xlsx"
 
@@ -19,9 +19,14 @@ interface AttendanceTableProps {
   customDailyValues: CustomDailyValue[]
   selectedMonth: string
   user: UserType
+  pagination: PaginationData
+  isLoading: boolean
   onBonusPointUpdate: (employeeId: string, date: string, points: number) => void
   onCustomValueUpdate: (employeeId: string, date: string, columnKey: string, value: string) => void
   onEmployeeUpdate: (employee: Employee) => void
+  onPageChange: (page: number) => void
+  onNextPage: () => void
+  onPrevPage: () => void
 }
 
 export function AttendanceTable({
@@ -31,9 +36,14 @@ export function AttendanceTable({
   customDailyValues,
   selectedMonth,
   user,
+  pagination,
+  isLoading,
   onBonusPointUpdate,
   onCustomValueUpdate,
   onEmployeeUpdate,
+  onPageChange,
+  onNextPage,
+  onPrevPage,
 }: AttendanceTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
@@ -101,9 +111,15 @@ export function AttendanceTable({
     })
   }, [selectedMonth])
 
-  // Filter employees based on user role and search/filter criteria
+  // Filter employees based on user role and search/filter criteria + current page attendance records
   const filteredEmployees = useMemo(() => {
-    let filtered = employees
+    // Get unique employee IDs from current page's attendance records
+    const currentPageEmployeeIds = [...new Set(attendanceRecords.map(record => record.employeeId))]
+    
+    // Filter employees to only include those with attendance records in current page
+    let filtered = employees.filter(emp => 
+      currentPageEmployeeIds.includes(getEmployeeId(emp))
+    )
 
     // Role-based filtering
     if (user.role === "truongphong" && user.department) {
@@ -125,15 +141,16 @@ export function AttendanceTable({
       filtered = filtered.filter((emp) => emp.department === departmentFilter)
     }
 
-    // Sort by ID (handle both id and _id fields)
+    // Sort by ID (numeric sorting for better order)
     filtered.sort((a, b) => {
-      const idA = getEmployeeId(a)
-      const idB = getEmployeeId(b)
-      return idA.localeCompare(idB, undefined, { numeric: true })
+      const idA = parseInt(getEmployeeId(a)) || 0
+      const idB = parseInt(getEmployeeId(b)) || 0
+      return idA - idB
     })
 
+    console.log(`📊 Filtered employees for page: ${filtered.length} (from ${currentPageEmployeeIds.length} unique employees with attendance records)`)
     return filtered
-  }, [employees, user, searchTerm, departmentFilter])
+  }, [employees, attendanceRecords, user, searchTerm, departmentFilter])
 
   // Get attendance record for specific employee and date
   const getAttendanceRecord = (employeeId: string, day: number): AttendanceRecord | undefined => {
@@ -534,7 +551,23 @@ export function AttendanceTable({
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map((employee, index) => {
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center">
+                    <div className="flex items-center justify-center gap-2 text-gray-500">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      Đang tải dữ liệu...
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center text-gray-500">
+                    Không có dữ liệu chấm công cho tháng này
+                  </td>
+                </tr>
+              ) : (
+                filteredEmployees.map((employee, index) => {
                 const employeeId = getEmployeeId(employee)
                 const totalPoints = getTotalPoints(employeeId)
                 const totalBonusPoints = daysInMonth.reduce(
@@ -675,7 +708,8 @@ export function AttendanceTable({
                     ))}
                   </tr>
                 )
-              })}
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -742,6 +776,60 @@ export function AttendanceTable({
           </DialogContent>
         </Dialog>
       )}
+      
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="text-sm text-gray-600">
+          Hiển thị {attendanceRecords.length} trong {pagination.totalCount.toLocaleString()} records
+          {pagination.totalPages > 1 && ` (Trang ${pagination.page}/${pagination.totalPages})`}
+        </div>
+        
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPrevPage}
+              disabled={!pagination.hasPrevPage || isLoading}
+              className="text-sm"
+            >
+              ← Trước
+            </Button>
+            
+            {/* Page numbers */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                const startPage = Math.max(1, pagination.page - 2)
+                const pageNum = startPage + i
+                if (pageNum > pagination.totalPages) return null
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === pagination.page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => onPageChange(pageNum)}
+                    disabled={isLoading}
+                    className="w-8 h-8 p-0 text-sm"
+                  >
+                    {pageNum}
+                  </Button>
+                )
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNextPage}
+              disabled={!pagination.hasNextPage || isLoading}
+              className="text-sm"
+            >
+              Sau →
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
