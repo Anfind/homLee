@@ -1,7 +1,8 @@
 "use client"
 
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { LogOut, UserIcon, Calendar, Building2, Clock } from "lucide-react"
+import { LogOut, UserIcon, Building2, Clock } from "lucide-react"
 import type { UserType } from "@/components/login-form"
 
 interface HeaderProps {
@@ -42,11 +43,17 @@ export function Header({ user, onLogout }: HeaderProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 relative">
+                <Image
+                  src="/logo_leeHomes.webp"
+                  alt="Lee Homes Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Hệ thống điểm Lee Homes</h1>
+                <h1 className="text-xl font-bold text-gray-900">Hệ thống điểm danh Lee Homes</h1>
                 <p className="text-sm text-gray-500">Quản lý điểm danh nhân viên</p>
               </div>
             </div>

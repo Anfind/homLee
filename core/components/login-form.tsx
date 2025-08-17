@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -120,10 +121,16 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       <div className="w-full max-w-lg" suppressHydrationWarning>
         <Card className="shadow-2xl border-0">
           <CardHeader className="text-center pb-4">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-10 h-10 text-white" />
+            <div className="w-24 h-24 mx-auto mb-4 relative">
+              <Image
+                src="/logo_leeHomes.webp"
+                alt="Lee Homes Logo"
+                width={96}
+                height={96}
+                className="object-contain"
+              />
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm Lee Homes</CardTitle>
+            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm danh Lee Homes</CardTitle>
             <CardDescription className="text-gray-600 text-base">
               Đăng nhập để quản lý chấm công nhân viên
             </CardDescription>

@@ -211,7 +211,11 @@ export function calculateDailyPoints(
 /**
  * Phân loại check-ins thành morning và afternoon (để tương thích với existing code)
  */
-export function categorizeCheckIns(checkIns: string[], date?: string): {
+export function categorizeCheckIns(
+  checkIns: string[], 
+  date?: string, 
+  checkInSettings?: CheckInSettings
+): {
   morningCheckIn?: string
   afternoonCheckIn?: string
 } {
@@ -227,9 +231,11 @@ export function categorizeCheckIns(checkIns: string[], date?: string): {
     dayOfWeek = dateObj.getDay() // 0 = Sunday, 1 = Monday, etc.
   }
   
-  // Get shift settings for this day
-  const settings = getDefaultCheckInSettings()
+  // Get shift settings for this day - use provided settings or fallback to defaults
+  const settings = checkInSettings || getDefaultCheckInSettings()
   const dayShifts = settings[dayOfWeek]?.shifts || settings[1].shifts // Fallback to Monday
+  
+  console.log(`🔍 categorizeCheckIns: Using ${checkInSettings ? 'MongoDB' : 'default'} settings for day ${dayOfWeek}:`, dayShifts.map(s => `${s.name} ${s.startTime}-${s.endTime} (${s.points}pts)`).join(', '))
   
   // Find morning and afternoon shifts
   const morningShift = dayShifts.find(shift => shift.name === 'Ca sáng')

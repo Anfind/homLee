@@ -1,9 +1,9 @@
 {
-  "name": "homelee-attendance-system",
+  "name": "leehomes-attendance-system",
   "version": "1.0.0",
   "private": true,
-  "description": "Hệ thống chấm công thông minh với ZKTeco integration",
-  "author": "HomeLee Team",
+  "description": "Hệ thống điểm danh Lee Homes với ZKTeco integration",
+  "author": "Lee Homes Team",
   "scripts": {
     "build": "next build",
     "dev": "next dev -p 3001",

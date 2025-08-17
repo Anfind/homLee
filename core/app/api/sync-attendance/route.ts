@@ -68,7 +68,11 @@ export async function POST(request: NextRequest) {
         }
         
         checkInSettings = mongoSettings
-        console.log('✅ Sync using check-in settings from MongoDB:', Object.keys(mongoSettings).map(day => `Day ${day}: ${mongoSettings[day].shifts.length} shifts`))
+        console.log('✅ Sync using check-in settings from MongoDB:')
+        Object.keys(mongoSettings).forEach(day => {
+          const shifts = mongoSettings[day].shifts
+          console.log(`   Day ${day}: ${shifts.map((s: any) => `${s.name} ${s.startTime}-${s.endTime} (${s.points}pts)`).join(', ')}`)
+        })
       } else {
         console.log('⚠️ No settings found in MongoDB, using defaults for sync')
       }
@@ -153,8 +157,12 @@ export async function POST(request: NextRequest) {
           checkInSettings
         )
         
-        // Categorize check-ins để tương thích với existing schema
-        const { morningCheckIn, afternoonCheckIn } = categorizeCheckIns(groupData.checkIns, groupData.date)
+        // Categorize check-ins để tương thích với existing schema - truyền settings từ MongoDB
+        const { morningCheckIn, afternoonCheckIn } = categorizeCheckIns(
+          groupData.checkIns, 
+          groupData.date, 
+          checkInSettings
+        )
         
         // Build attendance record
         const attendanceData = {

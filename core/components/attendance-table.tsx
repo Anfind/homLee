@@ -175,14 +175,19 @@ export function AttendanceTable({
     // Find the employee to get both possible IDs
     const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
     
+    // Helper function to get actual employeeId from bonus point
+    const getBonusEmployeeId = (bp: BonusPoint): string => {
+      return typeof bp.employeeId === 'string' ? bp.employeeId : bp.employeeId._id
+    }
+    
     // Try to find bonus points with current employeeId first
-    let bonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    let bonus = bonusPoints.find((bp) => getBonusEmployeeId(bp) === employeeId && bp.date === dateStr)
     
     // If not found and employee has alternative ID, try with that
     if (!bonus && employee) {
       const altId = employee.id !== employeeId ? employee.id : employee._id
       if (altId && altId !== employeeId) {
-        bonus = bonusPoints.find((bp) => bp.employeeId === altId && bp.date === dateStr)
+        bonus = bonusPoints.find((bp) => getBonusEmployeeId(bp) === altId && bp.date === dateStr)
       }
     }
     
@@ -219,14 +224,19 @@ export function AttendanceTable({
     // Find the employee to get both possible IDs
     const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
     
+    // Helper function to get actual employeeId from bonus point
+    const getBonusEmployeeId = (bp: BonusPoint): string => {
+      return typeof bp.employeeId === 'string' ? bp.employeeId : bp.employeeId._id
+    }
+    
     // Get bonus points for current employeeId
-    let bonusHistory = bonusPoints.filter((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    let bonusHistory = bonusPoints.filter((bp) => getBonusEmployeeId(bp) === employeeId && bp.date === dateStr)
     
     // If employee has alternative ID, also get bonus points for that ID
     if (employee) {
       const altId = employee.id !== employeeId ? employee.id : employee._id
       if (altId && altId !== employeeId) {
-        const altBonusHistory = bonusPoints.filter((bp) => bp.employeeId === altId && bp.date === dateStr)
+        const altBonusHistory = bonusPoints.filter((bp) => getBonusEmployeeId(bp) === altId && bp.date === dateStr)
         bonusHistory = [...bonusHistory, ...altBonusHistory]
       }
     }

@@ -46,33 +46,42 @@ export async function POST(request: NextRequest) {
     // Validation
     if (!username || !password || !name || !role) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: username, password, name, role' },
+        { success: false, error: 'Thiếu thông tin bắt buộc: tên đăng nhập, mật khẩu, tên và vai trò' },
         { status: 400 }
       )
     }
     
     if (role === 'truongphong' && !department) {
       return NextResponse.json(
-        { success: false, error: 'Department is required for truongphong role' },
+        { success: false, error: 'Vui lòng chọn phòng ban cho trưởng phòng' },
+        { status: 400 }
+      )
+    }
+    
+    // Trim and validate username
+    const trimmedUsername = username.trim().toLowerCase()
+    if (!/^[a-z0-9]{3,20}$/.test(trimmedUsername)) {
+      return NextResponse.json(
+        { success: false, error: 'Tên đăng nhập không hợp lệ (3-20 ký tự, chỉ chữ thường và số)' },
         { status: 400 }
       )
     }
     
     // Check if username already exists
-    const existingUser = await User.findOne({ username })
+    const existingUser = await User.findOne({ username: trimmedUsername })
     if (existingUser) {
       return NextResponse.json(
-        { success: false, error: 'Username already exists' },
+        { success: false, error: 'Tên đăng nhập đã tồn tại' },
         { status: 409 }
       )
     }
     
     const user = new User({
-      username,
+      username: trimmedUsername,
       password, // TODO: Hash password in production
-      name,
+      name: name.trim(),
       role,
-      department: role === 'truongphong' ? department : undefined
+      department: role === 'truongphong' ? department?.trim() : undefined
     })
     
     await user.save()
@@ -84,12 +93,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: userResponse,
-      message: 'User created successfully'
+      message: 'Tạo tài khoản thành công'
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating user:', error)
+    
+    // Handle specific MongoDB errors
+    if (error instanceof Error) {
+      if (error.message.includes('duplicate key')) {
+        return NextResponse.json(
+          { success: false, error: 'Tên đăng nhập đã tồn tại' },
+          { status: 409 }
+        )
+      }
+      if (error.message.includes('validation failed')) {
+        return NextResponse.json(
+          { success: false, error: 'Thông tin tài khoản không hợp lệ' },
+          { status: 400 }
+        )
+      }
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'Failed to create user' },
+      { success: false, error: 'Lỗi máy chủ khi tạo tài khoản' },
       { status: 500 }
     )
   }
