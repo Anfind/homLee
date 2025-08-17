@@ -127,7 +127,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 alt="Lee Homes Logo"
                 width={96}
                 height={96}
-                className="object-contain"
+                className="object-contain rounded-xl"
               />
             </div>
             <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm danh Lee Homes</CardTitle>

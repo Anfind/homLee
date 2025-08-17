@@ -49,7 +49,7 @@ export function Header({ user, onLogout }: HeaderProps) {
                   alt="Lee Homes Logo"
                   width={48}
                   height={48}
-                  className="object-contain"
+                  className="object-contain rounded-lg"
                 />
               </div>
               <div>
