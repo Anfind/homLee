@@ -3,39 +3,55 @@
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { LogOut, UserIcon, Building2, Clock } from "lucide-react"
+import { useMemo } from "react"
 import type { UserType } from "@/components/login-form"
+import type { CheckInSettings } from "@/app/page"
 
 interface HeaderProps {
   user: UserType
   onLogout: () => void
+  checkInSettings: CheckInSettings
 }
 
-export function Header({ user, onLogout }: HeaderProps) {
+export function Header({ user, onLogout, checkInSettings }: HeaderProps) {
   const getRoleName = (role: string) => {
     return role === "admin" ? "Quản trị viên" : "Trưởng phòng"
   }
 
-  // Get current day shift info
-  const getCurrentShiftInfo = () => {
+  // Get current day shift info from dynamic settings - memoized for performance
+  const getCurrentShiftInfo = useMemo(() => {
     const today = new Date()
     const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
     
-    if (dayOfWeek === 0) { // Sunday
-      return {
-        morning: "07:00-08:45",
-        afternoon: "13:30-14:45",
-        dayName: "Chủ nhật"
-      }
-    } else { // Monday to Saturday
-      return {
-        morning: "07:00-07:45", 
-        afternoon: "13:30-14:00",
-        dayName: ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"][dayOfWeek]
+    const daySettings = checkInSettings[dayOfWeek]
+    const dayNames = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"]
+    
+    // Find morning and afternoon shifts
+    let morningShift = null
+    let afternoonShift = null
+    
+    for (const shift of daySettings.shifts) {
+      const startHour = parseInt(shift.startTime.split(':')[0])
+      if (startHour < 12 && !morningShift) {
+        morningShift = shift
+      } else if (startHour >= 12 && !afternoonShift) {
+        afternoonShift = shift
       }
     }
-  }
+    
+    const result = {
+      morning: morningShift ? `${morningShift.startTime}-${morningShift.endTime}` : "Không có",
+      afternoon: afternoonShift ? `${afternoonShift.startTime}-${afternoonShift.endTime}` : "Không có", 
+      dayName: dayNames[dayOfWeek]
+    }
+    
+    // Log only when settings actually change (not on every render)
+    console.log(`🕒 Header updated shift info for ${result.dayName}: Morning ${result.morning}, Afternoon ${result.afternoon}`)
+    
+    return result
+  }, [checkInSettings]) // Re-calculate when checkInSettings changes
 
-  const shiftInfo = getCurrentShiftInfo()
+  const shiftInfo = getCurrentShiftInfo
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">

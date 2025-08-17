@@ -806,8 +806,20 @@ export default function Home() {
 
       await Promise.all(updatePromises)
       
-      setCheckInSettings(newSettings)
-      console.log(`✅ Updated check-in settings for all days`)
+      console.log(`🔄 Reloading settings from database to ensure sync...`)
+      // Force reload settings from database to ensure sync
+      const settingsResponse = await fetch('/api/check-in-settings')
+      const settingsResult = await settingsResponse.json()
+      if (settingsResult.success) {
+        setCheckInSettings(settingsResult.data)
+        console.log(`✅ Settings synced successfully with header`)
+      } else {
+        setCheckInSettings(newSettings) // Fallback to local data
+        console.log(`⚠️ Fallback to local settings data`)
+      }
+      
+      setShowCheckInSettingsManagement(false) // Close modal after successful save
+      console.log(`✅ Updated and reloaded check-in settings for all days`)
     } catch (error) {
       console.error('Error updating check-in settings:', error)
     }
@@ -833,7 +845,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={currentUser} onLogout={handleLogout} />
+      <Header user={currentUser} onLogout={handleLogout} checkInSettings={checkInSettings} />
 
       <div className="container mx-auto px-4 py-6">
         {/* Welcome Header */}

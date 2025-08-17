@@ -174,6 +174,7 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔄 Starting XML import process...')
     await connectDB()
 
     const formData = await request.formData()
@@ -185,6 +186,8 @@ export async function POST(request: NextRequest) {
         message: 'Không tìm thấy file XML'
       }, { status: 400 })
     }
+
+    console.log(`📁 Processing file: ${file.name} (${file.size} bytes)`)
 
     // Parse XML file using XLSX (supports XML format)
     const buffer = await file.arrayBuffer()
@@ -201,6 +204,8 @@ export async function POST(request: NextRequest) {
       range: newRef,
       header: ['STT', 'Ngày', 'ID', 'Họ và Tên', 'Giờ Vào', 'Giờ Ra']
     })
+
+    console.log(`📊 Found ${jsonData.length} data rows to process`)
 
     const results = {
       processed: 0,
@@ -292,6 +297,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log(`⚙️ Loading check-in settings from MongoDB...`)
     // Load check-in settings from MongoDB (fallback to default if not found)
     let checkInSettings = getDefaultCheckInSettings()
     try {
@@ -299,6 +305,7 @@ export async function POST(request: NextRequest) {
       const settings = await CheckInSettingsModel.find({ isActive: true }).sort({ dayOfWeek: 1 })
       
       if (settings && settings.length > 0) {
+        console.log(`✅ Loaded ${settings.length} custom settings from MongoDB`)
         // Convert to client format
         const mongoSettings: any = settings.reduce((acc: any, setting: any) => {
           acc[setting.dayOfWeek] = {
@@ -325,10 +332,14 @@ export async function POST(request: NextRequest) {
         }
         
         checkInSettings = mongoSettings
+      } else {
+        console.log(`⚠️ No settings found in MongoDB, using defaults`)
       }
     } catch (error) {
       console.error('❌ Error loading check-in settings:', error)
     }
+
+    console.log(`🎯 Starting attendance calculation for ${groupedData.size} unique employee-date combinations`)
 
     // Process grouped data and create attendance records
 
@@ -400,6 +411,8 @@ export async function POST(request: NextRequest) {
         })
       }
     }
+
+    console.log(`📝 Saving to database: ${results.created} new + ${results.updated} updates...`)
 
     return NextResponse.json({
       success: true,

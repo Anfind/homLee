@@ -117,6 +117,8 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
           >()
           const employeeSet = new Set<string>()
 
+          console.log(`📊 Processing ${rows.length} rows from XML file`)
+
           // Skip header rows (first 4 rows) và parse từ row thứ 5
           for (let i = 4; i < rows.length; i++) {
             const row = rows[i]
@@ -192,6 +194,8 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
             }
           }
 
+          console.log(`✅ Created ${employeeSet.size} employees and ${employeeRecords.size} attendance records`)
+
           // Chuyển đổi Map thành AttendanceRecord array
           employeeRecords.forEach((record, key) => {
             const employeeId = key.split("-")[0]
@@ -241,9 +245,12 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
 
   const processFile = async (file: File, targetDepartment: string) => {
     setIsProcessing(true)
+    console.log(`🔄 Starting XML import for file: ${file.name}`)
 
     try {
+      console.log(`📝 Parsing XML file and calculating points...`)
       const { records, employees } = await parseXMLFile(file, targetDepartment)
+      console.log(`✅ Import completed: ${employees.length} employees, ${records.length} attendance records`)
       onImport(records, employees)
       alert(
         `Đã import thành công vào ${targetDepartment}:\n- ${employees.length} nhân viên\n- ${records.length} bản ghi chấm công`,
