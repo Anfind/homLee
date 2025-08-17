@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Upload, FileText, Building2 } from "lucide-react"
-import type { AttendanceRecord, Employee, User, Department, CheckInSettings } from "@/app/page"
+import type { AttendanceRecord, Employee, Department, CheckInSettings } from "@/app/page"
+import type { UserType } from "@/components/login-form"
 
 interface XMLImporterProps {
   onImport: (records: AttendanceRecord[], employees: Employee[]) => void
-  user: User
+  user: UserType
   departments: Department[]
   checkInSettings: CheckInSettings // Đã có sẵn checkInSettings
 }
@@ -33,9 +34,9 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
   // Cập nhật hàm calculatePoints để sử dụng cấu hình ca làm việc mới
   const calculatePoints = (
     dateStr: string,
+    allCheckInSettings: CheckInSettings, // Truyền toàn bộ settings vào
     morningCheckIn?: string,
     afternoonCheckIn?: string,
-    allCheckInSettings: CheckInSettings, // Truyền toàn bộ settings vào
   ): number => {
     let points = 0
     const date = new Date(dateStr)
@@ -62,9 +63,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
         if (morningCheckInMinutes >= shiftStartMinutes && morningCheckInMinutes <= shiftEndMinutes) {
           points += shift.points
           morningPointsAwarded = true // Đánh dấu đã cộng điểm cho buổi sáng
-          console.log(
-            `Morning check-in ${morningCheckIn} awarded ${shift.points} points for shift '${shift.name}' on ${dateStr}`,
-          )
           break // Chỉ cộng điểm cho một ca duy nhất cho giờ chấm công buổi sáng
         }
       }
@@ -81,9 +79,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
         if (afternoonCheckInMinutes >= shiftStartMinutes && afternoonCheckInMinutes <= shiftEndMinutes) {
           points += shift.points
           afternoonPointsAwarded = true // Đánh dấu đã cộng điểm cho buổi chiều
-          console.log(
-            `Afternoon check-in ${afternoonCheckIn} awarded ${shift.points} points for shift '${shift.name}' on ${dateStr}`,
-          )
           break // Chỉ cộng điểm cho một ca duy nhất cho giờ chấm công buổi chiều
         }
       }
@@ -122,8 +117,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
           >()
           const employeeSet = new Set<string>()
 
-          console.log("Tổng số rows:", rows.length)
-
           // Skip header rows (first 4 rows) và parse từ row thứ 5
           for (let i = 4; i < rows.length; i++) {
             const row = rows[i]
@@ -136,8 +129,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
               const nameCell = cells[3]?.querySelector("Data")?.textContent
               const timeInCell = cells[4]?.querySelector("Data")?.textContent
               const timeOutCell = cells[5]?.querySelector("Data")?.textContent
-
-              console.log(`Row ${i}:`, { dateCell, idCell, nameCell, timeInCell, timeOutCell })
 
               if (dateCell && idCell && nameCell) {
                 const date = new Date(dateCell).toISOString().split("T")[0]
@@ -156,7 +147,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
                     department: targetDepartment, // Sử dụng phòng ban được chọn
                   })
                   employeeSet.add(employeeId)
-                  console.log(`Created employee: ${employeeId} - ${employeeName} (${title}, ${targetDepartment})`)
                 }
 
                 let morningCheckIn: string | undefined
@@ -206,7 +196,7 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
           employeeRecords.forEach((record, key) => {
             const employeeId = key.split("-")[0]
             // Truyền checkInSettings vào hàm calculatePoints
-            const points = calculatePoints(record.date, record.morningCheckIn, record.afternoonCheckIn, checkInSettings)
+            const points = calculatePoints(record.date, checkInSettings, record.morningCheckIn, record.afternoonCheckIn)
 
             records.push({
               employeeId,
@@ -216,15 +206,8 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
               points,
             })
 
-            console.log(`Employee ${employeeId} on ${record.date}:`, {
-              morning: record.morningCheckIn,
-              afternoon: record.afternoonCheckIn,
-              points,
-            })
           })
 
-          console.log("Final records:", records)
-          console.log("Final employees:", employees)
           resolve({ records, employees })
         } catch (error) {
           console.error("Parse error:", error)

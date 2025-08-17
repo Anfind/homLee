@@ -142,7 +142,6 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
   // Try original ID first
   let employee = await Employee.findOne({ _id: cleanId })
   if (employee) {
-    console.log(`✅ Found employee with original ID: ${cleanId}`)
     return cleanId
   }
   
@@ -151,7 +150,6 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
   if (numericId !== cleanId) {
     employee = await Employee.findOne({ _id: numericId })
     if (employee) {
-      console.log(`✅ Found employee with normalized ID: ${cleanId} -> ${numericId}`)
       return numericId
     }
   }
@@ -167,7 +165,6 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
   
   try {
     await Employee.create(newEmployee)
-    console.log(`🆕 Auto-created employee: ${finalId} - ${newEmployee.name}`)
     return finalId
   } catch (error) {
     console.error(`❌ Failed to create employee ${finalId}:`, error)
@@ -177,7 +174,6 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 Starting XML import...')
     await connectDB()
 
     const formData = await request.formData()
@@ -205,9 +201,6 @@ export async function POST(request: NextRequest) {
       range: newRef,
       header: ['STT', 'Ngày', 'ID', 'Họ và Tên', 'Giờ Vào', 'Giờ Ra']
     })
-
-    console.log(`📊 Found ${jsonData.length} rows in XML`)
-    console.log('📋 Sample rows:', jsonData.slice(0, 3))
 
     const results = {
       processed: 0,
@@ -299,15 +292,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`📊 Grouped into ${groupedData.size} unique employee-date combinations`)
-
     // Load check-in settings from MongoDB (fallback to default if not found)
     let checkInSettings = getDefaultCheckInSettings()
     try {
       // Load all active check-in settings (one per day of week)
       const settings = await CheckInSettingsModel.find({ isActive: true }).sort({ dayOfWeek: 1 })
-      
-      console.log(`🔍 [IMPORT DEBUG] Found ${settings.length} settings in MongoDB`)
       
       if (settings && settings.length > 0) {
         // Convert to client format
@@ -328,13 +317,6 @@ export async function POST(request: NextRequest) {
           })
         })
         
-        if (customPoints.length > 0) {
-          console.log(`🎯 [IMPORT DEBUG] CUSTOM POINTS DETECTED:`)
-          customPoints.forEach(cp => console.log(`   ${cp}`))
-        } else {
-          console.log(`⚠️ [IMPORT DEBUG] NO CUSTOM POINTS - all are 1 point`)
-        }
-        
         // Fill missing days with defaults
         for (let day = 0; day <= 6; day++) {
           if (!mongoSettings[day]) {
@@ -343,13 +325,9 @@ export async function POST(request: NextRequest) {
         }
         
         checkInSettings = mongoSettings
-        console.log('✅ [IMPORT DEBUG] Using check-in settings from MongoDB:', Object.keys(mongoSettings).map(day => `Day ${day}: ${mongoSettings[day].shifts.length} shifts`))
-      } else {
-        console.log('⚠️ [IMPORT DEBUG] No settings found in MongoDB, using defaults')
       }
     } catch (error) {
-      console.error('❌ [IMPORT DEBUG] Error loading check-in settings:', error)
-      console.log('⚠️ [IMPORT DEBUG] Falling back to default settings')
+      console.error('❌ Error loading check-in settings:', error)
     }
 
     // Process grouped data and create attendance records
@@ -408,12 +386,10 @@ export async function POST(request: NextRequest) {
             runValidators: true
           })
           results.updated++
-          console.log(`✅ Updated ${groupData.employeeName} - ${groupData.date}: ${pointsResult.totalPoints} points`)
         } else {
           // Create new record
           await AttendanceRecord.create(attendanceData)
           results.created++
-          console.log(`✅ Created ${groupData.employeeName} - ${groupData.date}: ${pointsResult.totalPoints} points`)
         }
 
       } catch (error) {
