@@ -1,11 +1,11 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { LogOut, UserIcon, Calendar, Building2 } from "lucide-react"
-import type { User } from "@/app/page"
+import { LogOut, UserIcon, Calendar, Building2, Clock } from "lucide-react"
+import type { UserType } from "@/components/login-form"
 
 interface HeaderProps {
-  user: User
+  user: UserType
   onLogout: () => void
 }
 
@@ -13,6 +13,28 @@ export function Header({ user, onLogout }: HeaderProps) {
   const getRoleName = (role: string) => {
     return role === "admin" ? "Quản trị viên" : "Trưởng phòng"
   }
+
+  // Get current day shift info
+  const getCurrentShiftInfo = () => {
+    const today = new Date()
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+    
+    if (dayOfWeek === 0) { // Sunday
+      return {
+        morning: "07:00-08:45",
+        afternoon: "13:30-14:45",
+        dayName: "Chủ nhật"
+      }
+    } else { // Monday to Saturday
+      return {
+        morning: "07:00-07:45", 
+        afternoon: "13:30-14:00",
+        dayName: ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"][dayOfWeek]
+      }
+    }
+  }
+
+  const shiftInfo = getCurrentShiftInfo()
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -26,6 +48,17 @@ export function Header({ user, onLogout }: HeaderProps) {
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Hệ thống điểm Lee Homes</h1>
                 <p className="text-sm text-gray-500">Quản lý điểm danh nhân viên</p>
+              </div>
+            </div>
+            
+            {/* Current Shift Info */}
+            <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+              <Clock className="w-4 h-4 text-blue-600" />
+              <div className="text-sm">
+                <div className="font-semibold text-blue-900">{shiftInfo.dayName}</div>
+                <div className="text-blue-700">
+                  Sáng: {shiftInfo.morning} • Chiều: {shiftInfo.afternoon}
+                </div>
               </div>
             </div>
           </div>

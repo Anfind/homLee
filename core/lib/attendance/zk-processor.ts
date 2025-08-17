@@ -157,6 +157,13 @@ export function calculateDailyPoints(
   const dayOfWeek = new Date(date + 'T00:00:00').getDay()
   const dayShifts = checkInSettings[dayOfWeek]?.shifts || []
   
+  console.log(`🔍 [CALCULATE DEBUG] Date: ${date}, DayOfWeek: ${dayOfWeek}`)
+  console.log(`🔍 [CALCULATE DEBUG] Check-ins: [${checkIns.join(', ')}]`)
+  console.log(`🔍 [CALCULATE DEBUG] Available shifts for day ${dayOfWeek}:`)
+  dayShifts.forEach(shift => {
+    console.log(`   ${shift.name}: ${shift.startTime}-${shift.endTime} (${shift.points} điểm)`)
+  })
+  
   const awardedShifts: Array<{
     shiftId: string
     shiftName: string
@@ -169,9 +176,12 @@ export function calculateDailyPoints(
   
   // Duyệt qua từng check-in và kiểm tra với tất cả shifts
   for (const checkIn of sortedCheckIns) {
+    console.log(`🔍 [CALCULATE DEBUG] Processing check-in: ${checkIn}`)
+    
     for (const shift of dayShifts) {
       // Kiểm tra xem shift này đã được award chưa
       const alreadyAwarded = awardedShifts.some(awarded => awarded.shiftId === shift.id)
+      console.log(`   Testing ${shift.name} (${shift.startTime}-${shift.endTime}): already awarded = ${alreadyAwarded}`)
       
       if (!alreadyAwarded && isTimeInShift(checkIn, shift)) {
         awardedShifts.push({
@@ -181,13 +191,16 @@ export function calculateDailyPoints(
           points: shift.points
         })
         
-        console.log(`✅ Awarded ${shift.points} points for ${shift.name} at ${checkIn}`)
+        console.log(`✅ [CALCULATE DEBUG] Awarded ${shift.points} points for ${shift.name} at ${checkIn}`)
         break // Chỉ award 1 shift cho mỗi check-in
+      } else if (!alreadyAwarded) {
+        console.log(`   ❌ ${checkIn} not in range ${shift.startTime}-${shift.endTime}`)
       }
     }
   }
   
   const totalPoints = awardedShifts.reduce((sum, awarded) => sum + awarded.points, 0)
+  console.log(`🔍 [CALCULATE DEBUG] Final result: ${totalPoints} points`)
   
   return {
     totalPoints,

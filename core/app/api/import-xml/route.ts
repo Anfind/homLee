@@ -304,16 +304,52 @@ export async function POST(request: NextRequest) {
     // Load check-in settings from MongoDB (fallback to default if not found)
     let checkInSettings = getDefaultCheckInSettings()
     try {
-      const settingsRecord = await CheckInSettingsModel.findOne({})
-      if (settingsRecord?.settings) {
-        checkInSettings = settingsRecord.settings
-        console.log('✅ Using check-in settings from MongoDB')
+      // Load all active check-in settings (one per day of week)
+      const settings = await CheckInSettingsModel.find({ isActive: true }).sort({ dayOfWeek: 1 })
+      
+      console.log(`🔍 [IMPORT DEBUG] Found ${settings.length} settings in MongoDB`)
+      
+      if (settings && settings.length > 0) {
+        // Convert to client format
+        const mongoSettings: any = settings.reduce((acc: any, setting: any) => {
+          acc[setting.dayOfWeek] = {
+            shifts: setting.shifts
+          }
+          return acc
+        }, {})
+        
+        // Log custom points for debugging
+        const customPoints: string[] = []
+        settings.forEach(setting => {
+          setting.shifts.forEach((shift: any) => {
+            if (shift.points !== 1) {
+              customPoints.push(`Day ${setting.dayOfWeek} ${shift.name}: ${shift.points} điểm`)
+            }
+          })
+        })
+        
+        if (customPoints.length > 0) {
+          console.log(`🎯 [IMPORT DEBUG] CUSTOM POINTS DETECTED:`)
+          customPoints.forEach(cp => console.log(`   ${cp}`))
+        } else {
+          console.log(`⚠️ [IMPORT DEBUG] NO CUSTOM POINTS - all are 1 point`)
+        }
+        
+        // Fill missing days with defaults
+        for (let day = 0; day <= 6; day++) {
+          if (!mongoSettings[day]) {
+            mongoSettings[day] = checkInSettings[day]
+          }
+        }
+        
+        checkInSettings = mongoSettings
+        console.log('✅ [IMPORT DEBUG] Using check-in settings from MongoDB:', Object.keys(mongoSettings).map(day => `Day ${day}: ${mongoSettings[day].shifts.length} shifts`))
       } else {
-        console.log('⚠️ No settings found in MongoDB, using defaults')
+        console.log('⚠️ [IMPORT DEBUG] No settings found in MongoDB, using defaults')
       }
     } catch (error) {
-      console.error('❌ Error loading check-in settings:', error)
-      console.log('⚠️ Falling back to default settings')
+      console.error('❌ [IMPORT DEBUG] Error loading check-in settings:', error)
+      console.log('⚠️ [IMPORT DEBUG] Falling back to default settings')
     }
 
     // Process grouped data and create attendance records

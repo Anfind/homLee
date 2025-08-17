@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb/connection'
 import { AttendanceRecord } from '@/lib/mongodb/models/AttendanceRecord'
 import { Employee } from '@/lib/mongodb/models/Employee'
+import { CheckInSettings as CheckInSettingsModel } from '@/lib/mongodb/models/CheckInSettings'
 import { 
   processZKAttendanceRecord, 
   calculateDailyPoints, 
   categorizeCheckIns,
-  getCheckInSettings 
+  getDefaultCheckInSettings 
 } from '@/lib/attendance/zk-processor'
 
 export async function POST(request: NextRequest) {
@@ -43,7 +44,38 @@ export async function POST(request: NextRequest) {
     }
 
     const attendanceRecords = zkData.data
-    const checkInSettings = getCheckInSettings()
+    
+    // Load check-in settings from MongoDB (fallback to default if not found)
+    let checkInSettings = getDefaultCheckInSettings()
+    try {
+      // Load all active check-in settings (one per day of week)
+      const settings = await CheckInSettingsModel.find({ isActive: true }).sort({ dayOfWeek: 1 })
+      
+      if (settings && settings.length > 0) {
+        // Convert to client format
+        const mongoSettings: any = settings.reduce((acc: any, setting: any) => {
+          acc[setting.dayOfWeek] = {
+            shifts: setting.shifts
+          }
+          return acc
+        }, {})
+        
+        // Fill missing days with defaults
+        for (let day = 0; day <= 6; day++) {
+          if (!mongoSettings[day]) {
+            mongoSettings[day] = checkInSettings[day]
+          }
+        }
+        
+        checkInSettings = mongoSettings
+        console.log('✅ Sync using check-in settings from MongoDB:', Object.keys(mongoSettings).map(day => `Day ${day}: ${mongoSettings[day].shifts.length} shifts`))
+      } else {
+        console.log('⚠️ No settings found in MongoDB, using defaults for sync')
+      }
+    } catch (error) {
+      console.error('❌ Error loading check-in settings for sync:', error)
+      console.log('⚠️ Falling back to default settings for sync')
+    }
     
     const syncResults = {
       processed: 0,

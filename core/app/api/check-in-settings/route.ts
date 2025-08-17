@@ -18,14 +18,26 @@ export async function GET() {
       return acc
     }, {})
     
-    // Fill missing days with default settings
+    // Fill missing days with correct default settings
     for (let day = 0; day <= 6; day++) {
       if (!clientSettings[day]) {
-        clientSettings[day] = {
-          shifts: [
-            { id: `day-${day}-shift-1`, name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-            { id: `day-${day}-shift-2`, name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 }
-          ]
+        if (day === 0) {
+          // Sunday - Special timing
+          clientSettings[day] = {
+            shifts: [
+              { id: `sun-shift-1`, name: "Ca sáng", startTime: "07:00", endTime: "08:45", points: 1 },
+              { id: `sun-shift-2`, name: "Ca chiều", startTime: "13:30", endTime: "14:45", points: 1 }
+            ]
+          }
+        } else {
+          // Monday to Saturday - Standard timing
+          const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+          clientSettings[day] = {
+            shifts: [
+              { id: `${dayNames[day]}-shift-1`, name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+              { id: `${dayNames[day]}-shift-2`, name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 }
+            ]
+          }
         }
       }
     }
@@ -94,6 +106,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: false,
       message: 'Lỗi khi cập nhật cấu hình chấm công',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+// DELETE /api/check-in-settings - Reset to default settings
+export async function DELETE() {
+  try {
+    await connectDB()
+    
+    // Delete all existing settings to force defaults
+    await CheckInSettings.deleteMany({})
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Reset cấu hình chấm công về mặc định thành công'
+    })
+
+  } catch (error) {
+    console.error('Reset check-in settings error:', error)
+    return NextResponse.json({
+      success: false,
+      message: 'Lỗi khi reset cấu hình chấm công',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }

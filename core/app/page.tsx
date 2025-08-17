@@ -9,6 +9,7 @@ import { XMLImportManager } from "@/components/xml-import-manager"
 import { EmployeeManagement } from "@/components/employee-management"
 import { DepartmentManagement } from "@/components/department-management"
 import { CheckInSettingsManagement } from "@/components/check-in-settings-management"
+import { ShiftInfoPanel } from "@/components/shift-info-panel"
 import DataSyncManager from "@/components/data-sync-manager"
 // Removed useLocalStorage - now using MongoDB only
 import { Calendar, Users, TrendingUp, FileSpreadsheet, UserPlus, Building2, Clock, Download, Settings } from "lucide-react"
@@ -659,22 +660,32 @@ export default function Home() {
 
   const handleCheckInSettingsSave = async (newSettings: CheckInSettings) => {
     try {
-      const response = await fetch('/api/check-in-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settings: newSettings,
-          updatedBy: currentUser?.username || 'system'
+      // Send each day's settings separately to the API
+      const updatePromises = Object.keys(newSettings).map(async (dayIndexStr) => {
+        const dayOfWeek = Number.parseInt(dayIndexStr)
+        const daySettings = newSettings[dayOfWeek]
+        
+        const response = await fetch('/api/check-in-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dayOfWeek: dayOfWeek,
+            shifts: daySettings.shifts,
+            updatedBy: currentUser?.username || 'system'
+          })
         })
+
+        const result = await response.json()
+        if (!result.success) {
+          throw new Error(`Day ${dayOfWeek}: ${result.message}`)
+        }
+        return result
       })
 
-      const result = await response.json()
-      if (result.success) {
-        setCheckInSettings(newSettings)
-        console.log(`✅ Updated check-in settings`)
-      } else {
-        console.error('Failed to update check-in settings:', result.message)
-      }
+      await Promise.all(updatePromises)
+      
+      setCheckInSettings(newSettings)
+      console.log(`✅ Updated check-in settings for all days`)
     } catch (error) {
       console.error('Error updating check-in settings:', error)
     }
@@ -843,6 +854,9 @@ export default function Home() {
 
           {/* SECONDARY SECTION: Controls Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            
+            {/* Shift Info Panel */}
+            <ShiftInfoPanel className="md:col-span-1" />
             
             {/* Time Selection Panel */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
