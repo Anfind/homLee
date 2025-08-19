@@ -34,7 +34,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Cấu hình thông tin máy chấm công
-const deviceIP = '192.168.1.240'; // IP của máy chấm công
+const deviceIP = '192.168.1.34'; // IP của máy chấm công
 const devicePort = 8818;          // Port đã xác định từ phần mềm Wise Eye
 const timeout = 10000;            // Tăng thời gian chờ lên 10 giây cho ổn định
 

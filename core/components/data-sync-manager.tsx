@@ -26,6 +26,7 @@ export default function DataSyncManager() {
   const [endDate, setEndDate] = useState('')
 
   const syncEmployees = async () => {
+    console.log('🔄 Starting employee sync - setting isEmployeeSync to true')
     setIsEmployeeSync(true)
     setEmployeeResult(null)
 
@@ -42,6 +43,7 @@ export default function DataSyncManager() {
       }
 
       const result = await response.json()
+      console.log('✅ Employee sync completed:', result)
       setEmployeeResult(result)
     } catch (error) {
       console.error('Employee sync error:', error)
@@ -50,6 +52,7 @@ export default function DataSyncManager() {
         message: `Lỗi kết nối API: ${error instanceof Error ? error.message : 'Unknown error'}`
       })
     } finally {
+      console.log('🏁 Employee sync finished - setting isEmployeeSync to false')
       setIsEmployeeSync(false)
     }
   }
@@ -129,7 +132,10 @@ export default function DataSyncManager() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Button 
-            onClick={syncEmployees} 
+            onClick={() => {
+              console.log('🖱️ Employee sync button clicked, current state:', { isEmployeeSync })
+              syncEmployees()
+            }} 
             disabled={isEmployeeSync}
             className="w-full"
           >

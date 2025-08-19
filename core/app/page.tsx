@@ -169,11 +169,11 @@ export default function Home() {
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(false)
   const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings)
   const [selectedMonth, setSelectedMonth] = useState(() => {
+    // Use current month (August 2025) where we have real data
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
     // Use March 2025 where we have sample data
-    return "2025-03"
-    // Use current month to test with real data  
-    // const now = new Date()
-    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    // return "2025-03"
   })
   const [showEmployeeManagement, setShowEmployeeManagement] = useState(false)
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
