@@ -41,10 +41,20 @@ start "Core Frontend DEV (Port 3001)" cmd /k "cd /d \"%~dp0core\" && npm run dev
 echo.
 echo ✅ Development servers are starting!
 echo.
-echo 🎯 Open http://localhost:3001 in your browser
+
+echo ⏳ Waiting for services to fully start...
+timeout /t 10 >nul
+
+echo � Opening Lee Homes Attendance System in browser...
+start http://localhost:3001
+
+echo.
+echo 🎉 Development environment ready! Browser should open automatically.
 echo.
 echo 💡 Frontend runs in development mode (hot reload enabled)
 echo 💡 Backend runs in production mode
+echo 💡 If browser doesn't open, manually go to: http://localhost:3001
+echo 🛑 To stop all services, run: stop-all.bat
 echo.
 echo Press any key to exit this window (services will keep running)
 pause >nul

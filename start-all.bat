@@ -98,7 +98,18 @@ echo 📋 Service URLs:
 echo   - ZKTeco Backend: http://localhost:3000
 echo   - Core Frontend:  http://localhost:3001
 echo.
-echo 🎯 Open http://localhost:3001 in your browser
+
+echo ⏳ Waiting for services to fully start...
+timeout /t 8 >nul
+
+echo � Opening Lee Homes Attendance System in browser...
+start http://localhost:3001
+
+echo.
+echo 🎉 System ready! Browser should open automatically.
+echo.
+echo 💡 If browser doesn't open, manually go to: http://localhost:3001
+echo 🛑 To stop all services, run: stop-all.bat
 echo.
 echo Press any key to exit this window (services will keep running)
 pause >nul
