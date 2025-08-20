@@ -35,7 +35,7 @@ REM Build and start core (Next.js frontend)
 echo ========================================
 echo    BUILDING CORE (Next.js Frontend)
 echo ========================================
-cd /d "%~dp0core"
+cd /d "D:\HomeLeeApp\homLee\core"
 echo 📦 Installing core dependencies...
 call npm install
 if errorlevel 1 (
@@ -59,7 +59,7 @@ REM Install zktceo-backend dependencies
 echo ========================================
 echo   BUILDING ZKTCEO BACKEND (Node.js)
 echo ========================================
-cd /d "%~dp0zktceo-backend"
+cd /d "D:\HomeLeeApp\homLee\zktceo-backend"
 echo 📦 Installing backend dependencies...
 call npm install
 if errorlevel 1 (
@@ -84,12 +84,12 @@ echo.
 
 REM Start both services in new command windows
 echo 🔄 Starting ZKTeco Backend...
-start "ZKTeco Backend (Port 3000)" cmd /k "cd /d \"%~dp0zktceo-backend\" && node server.js"
+start "ZKTeco Backend (Port 3000)" cmd /k "cd /d \"D:\HomeLeeApp\homLee\zktceo-backend\" && node server.js"
 
 timeout /t 3 >nul
 
 echo 🔄 Starting Core Frontend...
-start "Core Frontend (Port 3001)" cmd /k "cd /d \"%~dp0core\" && npm start"
+start "Core Frontend (Port 3001)" cmd /k "cd /d \"D:\HomeLeeApp\homLee\core\" && npm start"
 
 echo.
 echo ✅ All services are starting!
