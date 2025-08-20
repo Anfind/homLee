@@ -6,7 +6,7 @@ echo.
 
 cd /d "D:\HomeLeeApp\homLee\core"
 echo 📦 Installing dependencies...
-call npm install
+call npm install --force
 
 echo 🏗️ Building project...
 call npm run build
