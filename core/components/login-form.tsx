@@ -41,7 +41,11 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             // Add demo passwords for display (these are not used for actual auth)
             const usersWithDemoPasswords = result.data.map((user: any) => ({
               ...user,
-              password: user.username === 'admin' ? 'admin123' : `${user.username}123`
+              password: user.username === 'admin' 
+                ? 'admin123' 
+                : user.role === 'department_manager' 
+                  ? `${user.username}2024`  // Đúng format cho department managers
+                  : `${user.username}123`   // Cho các role khác
             }))
             setUsers(usersWithDemoPasswords)
           }
