@@ -6,6 +6,7 @@ import { LogOut, UserIcon, Building2, Clock } from "lucide-react"
 import { useMemo } from "react"
 import type { UserType } from "@/components/login-form"
 import type { CheckInSettings } from "@/app/page"
+import { AutoSyncControl } from "@/components/auto-sync-control"
 
 interface HeaderProps {
   user: UserType
@@ -92,6 +93,11 @@ export function Header({ user, onLogout, checkInSettings }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Auto Sync Control - hiển thị cho admin */}
+            {user.role === 'admin' && (
+              <AutoSyncControl />
+            )}
+            
             <div className="hidden sm:flex items-center gap-4 px-4 py-2 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                 <UserIcon className="w-4 h-4 text-white" />

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
+import { AutoSyncInitializer } from '@/components/auto-sync-initializer'
 
 export const metadata: Metadata = {
   title: 'Hệ thống điểm danh Lee Homes',
@@ -29,7 +30,10 @@ html {
 }
         `}</style>
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <AutoSyncInitializer />
+        {children}
+      </body>
     </html>
   )
 }

@@ -61,7 +61,7 @@ export function EmployeeManagement({
     username: "",
     password: "",
     name: "",
-    role: "truongphong" as "admin" | "truongphong",
+    role: "truongphong" as "admin" | "truongphong" | "department_manager",
     department: "",
   })
 
@@ -169,8 +169,8 @@ export function EmployeeManagement({
       return
     }
 
-    if (userForm.role === "truongphong" && !userForm.department) {
-      alert("Vui lòng chọn phòng ban cho trưởng phòng")
+    if ((userForm.role === "truongphong" || userForm.role === "department_manager") && !userForm.department) {
+      alert("Vui lòng chọn phòng ban cho trưởng phòng/quản lý phòng ban")
       return
     }
 
@@ -191,7 +191,7 @@ export function EmployeeManagement({
       password: userForm.password,
       name: userForm.name.trim(),
       role: userForm.role,
-      department: userForm.role === "truongphong" ? userForm.department : undefined,
+      department: (userForm.role === "truongphong" || userForm.role === "department_manager") ? userForm.department : undefined,
     }
 
     setIsSubmitting(true)
@@ -505,7 +505,7 @@ export function EmployeeManagement({
                   <label className="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
                   <Select
                     value={userForm.role}
-                    onValueChange={(value: "admin" | "truongphong") => setUserForm({ ...userForm, role: value })}
+                    onValueChange={(value: "admin" | "truongphong" | "department_manager") => setUserForm({ ...userForm, role: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -513,10 +513,11 @@ export function EmployeeManagement({
                     <SelectContent>
                       <SelectItem value="admin">Quản trị viên</SelectItem>
                       <SelectItem value="truongphong">Trưởng phòng</SelectItem>
+                      <SelectItem value="department_manager">Quản lý phòng ban</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {userForm.role === "truongphong" && (
+                {(userForm.role === "truongphong" || userForm.role === "department_manager") && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
                     <Select

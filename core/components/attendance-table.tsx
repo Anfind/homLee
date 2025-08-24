@@ -51,6 +51,10 @@ export function AttendanceTable({
   const [bonusValue, setBonusValue] = useState("")
   const [historyDialog, setHistoryDialog] = useState<{ employeeId: string; date: string } | null>(null)
 
+  // Client-side pagination cho employees (vì bây giờ hiển thị tất cả employees)
+  const [currentPage, setCurrentPage] = useState(1)
+  const EMPLOYEES_PER_PAGE = 20 // Hiển thị 20 nhân viên mỗi trang
+
   // Helper to get employeeId (handle both id and _id fields from MongoDB)
   const getEmployeeId = (employee: any): string => {
     return employee.id || employee._id || ''
@@ -111,15 +115,10 @@ export function AttendanceTable({
     })
   }, [selectedMonth])
 
-  // Filter employees based on user role and search/filter criteria + current page attendance records
+  // Filter employees based on user role and search/filter criteria - HIỂN THỊ TẤT CẢ NHÂN VIÊN
   const filteredEmployees = useMemo(() => {
-    // Get unique employee IDs from current page's attendance records
-    const currentPageEmployeeIds = [...new Set(attendanceRecords.map(record => record.employeeId))]
-    
-    // Filter employees to only include those with attendance records in current page
-    let filtered = employees.filter(emp => 
-      currentPageEmployeeIds.includes(getEmployeeId(emp))
-    )
+    // Bắt đầu với TẤT CẢ nhân viên thay vì chỉ những người có attendance records
+    let filtered = employees;
 
     // Role-based filtering
     if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
@@ -148,9 +147,38 @@ export function AttendanceTable({
       return idA - idB
     })
 
-    console.log(`📊 Filtered employees for page: ${filtered.length} (from ${currentPageEmployeeIds.length} unique employees with attendance records)`)
+    console.log(`📊 Hiển thị tất cả nhân viên: ${filtered.length} employees (after role/search/department filtering)`)
     return filtered
   }, [employees, attendanceRecords, user, searchTerm, departmentFilter])
+
+  // Client-side pagination cho employees
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (currentPage - 1) * EMPLOYEES_PER_PAGE
+    const endIndex = startIndex + EMPLOYEES_PER_PAGE
+    return filteredEmployees.slice(startIndex, endIndex)
+  }, [filteredEmployees, currentPage])
+
+  // Tính toán pagination info cho employees
+  const employeePagination = useMemo(() => {
+    const totalEmployees = filteredEmployees.length
+    const totalPages = Math.ceil(totalEmployees / EMPLOYEES_PER_PAGE)
+    
+    return {
+      currentPage,
+      totalPages,
+      totalEmployees,
+      employeesPerPage: EMPLOYEES_PER_PAGE,
+      startIndex: (currentPage - 1) * EMPLOYEES_PER_PAGE + 1,
+      endIndex: Math.min(currentPage * EMPLOYEES_PER_PAGE, totalEmployees),
+      hasPrevPage: currentPage > 1,
+      hasNextPage: currentPage < totalPages
+    }
+  }, [filteredEmployees.length, currentPage])
+
+  // Reset về trang 1 khi filter thay đổi
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, departmentFilter])
 
   // Get attendance record for specific employee and date
   const getAttendanceRecord = (employeeId: string, day: number): AttendanceRecord | undefined => {
@@ -330,7 +358,7 @@ export function AttendanceTable({
       return
     }
 
-    const data = filteredEmployees.map((employee, index) => {
+    const data = paginatedEmployees.map((employee, index) => {
       const employeeId = getEmployeeId(employee)
       const row: any = {
         STT: index + 1,
@@ -434,7 +462,7 @@ export function AttendanceTable({
         </div>
       </div>
 
-      {/* Search and Filter Controls */}
+      {/* Search and Filter Controls với thông tin tổng quan */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative">
@@ -462,6 +490,20 @@ export function AttendanceTable({
               </SelectContent>
             </Select>
           )}
+        </div>
+
+        {/* Thông tin tổng quan */}
+        <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+            <span className="font-medium">Tổng: {employees.length}</span> nhân viên
+          </div>
+          <div className="bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+            <span className="font-medium">Hiển thị: {filteredEmployees.length}</span> 
+            {searchTerm || departmentFilter !== "all" ? " (đã lọc)" : ""}
+          </div>
+          <div className="bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200">
+            <span className="font-medium">Trang: {employeePagination.currentPage}/{employeePagination.totalPages}</span>
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -577,7 +619,7 @@ export function AttendanceTable({
                   </td>
                 </tr>
               ) : (
-                filteredEmployees.map((employee, index) => {
+                paginatedEmployees.map((employee, index) => {
                 const employeeId = getEmployeeId(employee)
                 const totalPoints = getTotalPoints(employeeId)
                 const totalBonusPoints = daysInMonth.reduce(
@@ -787,20 +829,20 @@ export function AttendanceTable({
         </Dialog>
       )}
       
-      {/* Pagination Controls */}
+      {/* Pagination Controls - Sử dụng employee pagination */}
       <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
         <div className="text-sm text-gray-600">
-          Hiển thị {attendanceRecords.length} trong {pagination.totalCount.toLocaleString()} records
-          {pagination.totalPages > 1 && ` (Trang ${pagination.page}/${pagination.totalPages})`}
+          Hiển thị {employeePagination.startIndex}-{employeePagination.endIndex} trong {employeePagination.totalEmployees} nhân viên
+          {employeePagination.totalPages > 1 && ` (Trang ${employeePagination.currentPage}/${employeePagination.totalPages})`}
         </div>
         
-        {pagination.totalPages > 1 && (
+        {employeePagination.totalPages > 1 && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={onPrevPage}
-              disabled={!pagination.hasPrevPage || isLoading}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={!employeePagination.hasPrevPage || isLoading}
               className="text-sm"
             >
               ← Trước
@@ -808,17 +850,17 @@ export function AttendanceTable({
             
             {/* Page numbers */}
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                const startPage = Math.max(1, pagination.page - 2)
+              {Array.from({ length: Math.min(5, employeePagination.totalPages) }, (_, i) => {
+                const startPage = Math.max(1, employeePagination.currentPage - 2)
                 const pageNum = startPage + i
-                if (pageNum > pagination.totalPages) return null
+                if (pageNum > employeePagination.totalPages) return null
                 
                 return (
                   <Button
                     key={pageNum}
-                    variant={pageNum === pagination.page ? "default" : "outline"}
+                    variant={pageNum === employeePagination.currentPage ? "default" : "outline"}
                     size="sm"
-                    onClick={() => onPageChange(pageNum)}
+                    onClick={() => setCurrentPage(pageNum)}
                     disabled={isLoading}
                     className="w-8 h-8 p-0 text-sm"
                   >
@@ -831,8 +873,8 @@ export function AttendanceTable({
             <Button
               variant="outline"
               size="sm"
-              onClick={onNextPage}
-              disabled={!pagination.hasNextPage || isLoading}
+              onClick={() => setCurrentPage(prev => Math.min(employeePagination.totalPages, prev + 1))}
+              disabled={!employeePagination.hasNextPage || isLoading}
               className="text-sm"
             >
               Sau →
