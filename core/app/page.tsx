@@ -227,9 +227,9 @@ export default function Home() {
           console.log('❌ Failed to load users:', usersResult)
         }
 
-        // Load attendance records from MongoDB for the selected month with pagination
-        console.log(`🔄 Fetching attendance records for month: ${selectedMonth} (page 1)`)
-        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}&page=1&limit=40`)
+        // Load ALL attendance records from MongoDB for the selected month (no pagination)
+        console.log(`🔄 Fetching ALL attendance records for month: ${selectedMonth}`)
+        const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
         console.log(`📡 Attendance API response status:`, attendanceResponse.status)
         
         const attendanceResult = await attendanceResponse.json()
@@ -237,8 +237,16 @@ export default function Home() {
         
         if (attendanceResult.success) {
           setAttendanceRecords(attendanceResult.data)
-          setPagination(attendanceResult.pagination)
-          console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth} (page 1/${attendanceResult.pagination.totalPages}, total: ${attendanceResult.pagination.totalCount})`)
+          // Reset pagination since we're doing client-side pagination now
+          setPagination({
+            page: 1,
+            limit: attendanceResult.data.length,
+            totalCount: attendanceResult.data.length,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false
+          })
+          console.log(`✅ Loaded ALL ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
           console.log('📋 Sample attendance records:', attendanceResult.data.slice(0, 3))
           
           // Debug: Check if employees match attendance records

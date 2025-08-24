@@ -53,7 +53,7 @@ export function AttendanceTable({
 
   // Client-side pagination cho employees (vì bây giờ hiển thị tất cả employees)
   const [currentPage, setCurrentPage] = useState(1)
-  const EMPLOYEES_PER_PAGE = 20 // Hiển thị 20 nhân viên mỗi trang
+  const EMPLOYEES_PER_PAGE = 40 // Hiển thị 40 nhân viên mỗi trang
 
   // Helper to get employeeId (handle both id and _id fields from MongoDB)
   const getEmployeeId = (employee: any): string => {
@@ -147,7 +147,6 @@ export function AttendanceTable({
       return idA - idB
     })
 
-    console.log(`📊 Hiển thị tất cả nhân viên: ${filtered.length} employees (after role/search/department filtering)`)
     return filtered
   }, [employees, attendanceRecords, user, searchTerm, departmentFilter])
 
@@ -155,7 +154,9 @@ export function AttendanceTable({
   const paginatedEmployees = useMemo(() => {
     const startIndex = (currentPage - 1) * EMPLOYEES_PER_PAGE
     const endIndex = startIndex + EMPLOYEES_PER_PAGE
-    return filteredEmployees.slice(startIndex, endIndex)
+    const result = filteredEmployees.slice(startIndex, endIndex)
+    
+    return result
   }, [filteredEmployees, currentPage])
 
   // Tính toán pagination info cho employees
@@ -183,17 +184,7 @@ export function AttendanceTable({
   // Get attendance record for specific employee and date
   const getAttendanceRecord = (employeeId: string, day: number): AttendanceRecord | undefined => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    const record = attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
-    
-    // Debug first few calls
-    if (employeeId === "117" && day <= 5) {
-      console.log(`🔍 Looking for employee ${employeeId} on ${dateStr}:`)
-      console.log(`   - Found record:`, record)
-      console.log(`   - Total attendanceRecords:`, attendanceRecords.length)
-      console.log(`   - Sample records:`, attendanceRecords.slice(0, 2))
-    }
-    
-    return record
+    return attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
   }
 
   // Get bonus points for specific employee and date
@@ -425,43 +416,6 @@ export function AttendanceTable({
 
   return (
     <div className="space-y-4">
-      {/* Debug Panel - Always visible at top */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-yellow-800">
-            <strong>Debug Info:</strong> selectedMonth: {selectedMonth} | attendanceRecords: {attendanceRecords.length}
-          </div>
-          <Button 
-            onClick={() => {
-              console.log(`🔍 DETAILED DEBUG INFO:`)
-              console.log(`   - selectedMonth: ${selectedMonth}`)
-              console.log(`   - attendanceRecords.length: ${attendanceRecords.length}`)
-              console.log(`   - Sample records:`, attendanceRecords.slice(0, 3))
-              console.log(`   - Looking for employee 117 on 2025-03-04:`, 
-                attendanceRecords.find(r => r.employeeId === "117" && r.date === "2025-03-04"))
-              
-              // Test getAttendanceRecord for March 4th (day 4 of March)
-              const record = getAttendanceRecord("117", 4)
-              console.log(`   - getAttendanceRecord("117", 4):`, record)
-              
-              // Test all employees for day 4
-              const allRecordsDay4 = employees.slice(0, 3).map(emp => ({
-                employeeId: emp.id,
-                record: getAttendanceRecord(emp.id, 4),
-                points: getAttendanceRecord(emp.id, 4)?.points || 0
-              }))
-              console.log(`   - All employees day 4:`, allRecordsDay4)
-              
-              alert(`Debug info logged to console! Records: ${attendanceRecords.length}`)
-            }}
-            size="sm"
-            className="bg-yellow-600 hover:bg-yellow-700 text-white"
-          >
-            🔍 DEBUG CONSOLE
-          </Button>
-        </div>
-      </div>
-
       {/* Search and Filter Controls với thông tin tổng quan */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-2">
@@ -510,24 +464,6 @@ export function AttendanceTable({
           <Button onClick={exportToExcel} className="flex items-center gap-2">
             <Download className="w-4 h-4" />
             Xuất Excel
-          </Button>
-          <Button 
-            onClick={() => {
-              console.log(`🔍 DEBUG INFO:`)
-              console.log(`   - selectedMonth: ${selectedMonth}`)
-              console.log(`   - attendanceRecords.length: ${attendanceRecords.length}`)
-              console.log(`   - Sample records:`, attendanceRecords.slice(0, 3))
-              console.log(`   - Looking for employee 117 on 2025-03-04:`, 
-                attendanceRecords.find(r => r.employeeId === "117" && r.date === "2025-03-04"))
-              
-              // Test getAttendanceRecord for March 4th (day 4 of March)
-              const record = getAttendanceRecord("117", 4)
-              console.log(`   - getAttendanceRecord("117", 4):`, record)
-            }}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            🔍 Debug
           </Button>
         </div>
       </div>
