@@ -3,3 +3,5 @@ cd c:\An\homLee\core && node seed-employees.js
 
 seed-employees-with-departments.js: Script chính để seed data
 seed-employees-from-zkteco.js
+seed-department-users.js
+test-attendance-sync.js: Test sync API

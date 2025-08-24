@@ -83,6 +83,7 @@ async function seedDepartmentUsers() {
 
       // Create user document - NO PASSWORD HASHING (để phù hợp với auth logic hiện tại)
       const userDoc = {
+        name: `${departmentName} Manager`, // Thêm field name
         username: username,
         password: password, // Lưu plain text password
         role: 'department_manager', // New role for department managers
