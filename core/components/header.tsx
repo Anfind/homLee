@@ -15,7 +15,12 @@ interface HeaderProps {
 
 export function Header({ user, onLogout, checkInSettings }: HeaderProps) {
   const getRoleName = (role: string) => {
-    return role === "admin" ? "Quản trị viên" : "Trưởng phòng"
+    switch (role) {
+      case "admin": return "Quản trị viên"
+      case "truongphong": return "Trưởng phòng"
+      case "department_manager": return "Quản lý phòng ban"
+      default: return "Nhân viên"
+    }
   }
 
   // Get current day shift info from dynamic settings - memoized for performance

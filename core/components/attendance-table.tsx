@@ -122,7 +122,7 @@ export function AttendanceTable({
     )
 
     // Role-based filtering
-    if (user.role === "truongphong" && user.department) {
+    if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
       filtered = filtered.filter((emp) => emp.department === user.department)
     }
 

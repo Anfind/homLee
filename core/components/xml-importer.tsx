@@ -237,8 +237,8 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
       return
     }
 
-    // Nếu là trưởng phòng, tự động sử dụng phòng của mình
-    if (user.role === "truongphong" && user.department) {
+    // Nếu là trưởng phòng hoặc quản lý phòng ban, tự động sử dụng phòng của mình
+    if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
       await processFile(file, user.department)
     }
   }

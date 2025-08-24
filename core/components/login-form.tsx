@@ -11,7 +11,7 @@ import { Eye, EyeOff, Lock, Shield, Building2, Info, User } from "lucide-react"
 export interface UserType {
   username: string
   password?: string // For display only, not used in API
-  role: "admin" | "truongphong"
+  role: "admin" | "truongphong" | "department_manager"
   department?: string
   name: string
   lastLogin?: Date
@@ -105,15 +105,24 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   }
 
   const getRoleIcon = (role: string) => {
-    return role === "admin" ? <Shield className="w-4 h-4 text-red-500" /> : <User className="w-4 h-4 text-blue-500" />
+    if (role === "admin") return <Shield className="w-4 h-4 text-red-500" />
+    if (role === "department_manager") return <User className="w-4 h-4 text-green-500" />
+    return <User className="w-4 h-4 text-blue-500" />
   }
 
   const getRoleColor = (role: string) => {
-    return role === "admin" ? "bg-red-50 border-red-200" : "bg-blue-50 border-blue-200"
+    if (role === "admin") return "bg-red-50 border-red-200"
+    if (role === "department_manager") return "bg-green-50 border-green-200"
+    return "bg-blue-50 border-blue-200"
   }
 
   const getRoleName = (role: string) => {
-    return role === "admin" ? "Quản trị viên" : "Trưởng phòng"
+    switch (role) {
+      case "admin": return "Quản trị viên"
+      case "truongphong": return "Trưởng phòng"
+      case "department_manager": return "Quản lý phòng ban"
+      default: return "Nhân viên"
+    }
   }
 
   return (
@@ -168,11 +177,15 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                       <div className="flex items-center gap-3">
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            account.role === "admin" ? "bg-red-100" : "bg-blue-100"
+                            account.role === "admin" ? "bg-red-100" : 
+                            account.role === "department_manager" ? "bg-green-100" : "bg-blue-100"
                           }`}
                         >
                           <span
-                            className={`font-semibold ${account.role === "admin" ? "text-red-600" : "text-blue-600"}`}
+                            className={`font-semibold ${
+                              account.role === "admin" ? "text-red-600" : 
+                              account.role === "department_manager" ? "text-green-600" : "text-blue-600"
+                            }`}
                           >
                             {account.name.charAt(0)}
                           </span>

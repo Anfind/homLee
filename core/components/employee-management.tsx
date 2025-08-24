@@ -347,7 +347,8 @@ export function EmployeeManagement({
                           </div>
                           <div className="text-sm text-gray-600 flex items-center gap-2">
                             <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                              {user.role === "admin" ? "Quản trị viên" : "Trưởng phòng"}
+                              {user.role === "admin" ? "Quản trị viên" : 
+                               user.role === "department_manager" ? "Quản lý phòng ban" : "Trưởng phòng"}
                             </Badge>
                             {user.department && <span>{user.department}</span>}
                           </div>
