@@ -382,8 +382,6 @@ export function AttendanceTable({
       return row
     })
 
-    console.log("Data for Excel export:", data) // Debugging log
-
     try {
       const ws = XLSX.utils.json_to_sheet(data)
       const wb = XLSX.utils.book_new()
