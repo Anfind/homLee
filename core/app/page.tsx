@@ -387,6 +387,38 @@ export default function Home() {
     }
   }, [])
 
+  // Function để refresh attendance data
+  const refreshAttendanceData = async () => {
+    try {
+      setIsLoadingAttendance(true)
+      
+      // Load ALL attendance records from MongoDB for the selected month (no pagination)
+      console.log(`🔄 Refreshing attendance records for month: ${selectedMonth}`)
+      const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+      
+      if (attendanceResponse.ok) {
+        const attendanceResult = await attendanceResponse.json()
+        if (attendanceResult.success) {
+          setAttendanceRecords(attendanceResult.data)
+          console.log(`✅ Refreshed ${attendanceResult.data.length} attendance records`)
+        }
+      }
+      
+      // Also refresh bonus points
+      const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+      if (bonusPointsResponse.ok) {
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing attendance data:', error)
+    } finally {
+      setIsLoadingAttendance(false)
+    }
+  }
+
   const handleXMLImport = (records: AttendanceRecord[], newEmployees: Employee[]) => {
     // Cập nhật danh sách nhân viên (kiểm tra trùng)
     setEmployees((prevEmployees) => {
@@ -1258,6 +1290,7 @@ export default function Home() {
                 onBonusPointUpdate={handleBonusPointUpdate}
                 onCustomValueUpdate={handleCustomValueUpdate}
                 onEmployeeUpdate={handleEmployeeUpdate}
+                onAttendanceUpdate={refreshAttendanceData}
                 onPageChange={handlePageSelect}
                 onNextPage={handleNextPage}
                 onPrevPage={handlePrevPage}

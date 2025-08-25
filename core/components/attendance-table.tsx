@@ -24,6 +24,7 @@ interface AttendanceTableProps {
   onBonusPointUpdate: (employeeId: string, date: string, points: number) => void
   onCustomValueUpdate: (employeeId: string, date: string, columnKey: string, value: string) => void
   onEmployeeUpdate: (employee: Employee) => void
+  onAttendanceUpdate?: () => void // Optional callback để refresh attendance data
   onPageChange: (page: number) => void
   onNextPage: () => void
   onPrevPage: () => void
@@ -41,6 +42,7 @@ export function AttendanceTable({
   onBonusPointUpdate,
   onCustomValueUpdate,
   onEmployeeUpdate,
+  onAttendanceUpdate,
   onPageChange,
   onNextPage,
   onPrevPage,
@@ -73,6 +75,16 @@ export function AttendanceTable({
   const [titleInputValue, setTitleInputValue] = useState("")
   const titleInputRef = useRef<HTMLInputElement>(null) // Ref to focus the title input
 
+  // State for inline editing attendance points
+  const [editingAttendance, setEditingAttendance] = useState<{
+    employeeId: string
+    day: number
+    field: 'morning' | 'afternoon' | 'points'
+  } | null>(null)
+  const [attendanceInputValue, setAttendanceInputValue] = useState("")
+  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false)
+  const attendanceInputRef = useRef<HTMLInputElement>(null)
+
   // Focus input when editingCustomCell changes
   useEffect(() => {
     if (editingCustomCell && customInputRef.current) {
@@ -86,6 +98,14 @@ export function AttendanceTable({
       titleInputRef.current.focus()
     }
   }, [editingTitle])
+
+  // Focus attendance input when editingAttendance changes
+  useEffect(() => {
+    if (editingAttendance && attendanceInputRef.current) {
+      attendanceInputRef.current.focus()
+      attendanceInputRef.current.select()
+    }
+  }, [editingAttendance])
 
   // Define custom column keys and their display names
   const customColumns = [
@@ -333,6 +353,61 @@ export function AttendanceTable({
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, employeeId: string) => {
     if (e.key === "Enter") {
       handleSaveTitle(employeeId)
+    }
+  }
+
+  // Handlers for attendance inline editing
+  const handleAttendanceEdit = (employeeId: string, day: number, field: 'morning' | 'afternoon' | 'points', currentValue: string | number) => {
+    setEditingAttendance({ employeeId, day, field })
+    setAttendanceInputValue(currentValue.toString())
+  }
+
+  const handleAttendanceSave = async () => {
+    if (!editingAttendance || isUpdatingAttendance) return
+    
+    setIsUpdatingAttendance(true)
+    const { employeeId, day, field } = editingAttendance
+    const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
+    
+    try {
+      const response = await fetch('/api/attendance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          date: dateStr,
+          field,
+          value: field === 'points' ? Number(attendanceInputValue) : attendanceInputValue
+        })
+      })
+      
+      if (response.ok) {
+        // Use callback if provided, otherwise reload
+        if (onAttendanceUpdate) {
+          onAttendanceUpdate()
+        } else {
+          window.location.reload()
+        }
+      } else {
+        console.error('Failed to update attendance')
+        alert('Có lỗi khi cập nhật điểm chấm công')
+      }
+    } catch (error) {
+      console.error('Error updating attendance:', error)
+      alert('Có lỗi khi cập nhật điểm chấm công')
+    } finally {
+      setIsUpdatingAttendance(false)
+      setEditingAttendance(null)
+      setAttendanceInputValue("")
+    }
+  }
+
+  const handleAttendanceKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAttendanceSave()
+    } else if (e.key === 'Escape') {
+      setEditingAttendance(null)
+      setAttendanceInputValue("")
     }
   }
 
@@ -595,42 +670,93 @@ export function AttendanceTable({
                       const totalDayPoints = (record?.points || 0) + bonus
                       const isLowPoints = totalDayPoints <= 1
 
+                      // Check if đang edit cell này
+                      const isEditingThisCell = editingAttendance?.employeeId === employeeId && 
+                                               editingAttendance?.day === dayInfo.day &&
+                                               editingAttendance?.field === 'points'
+
                       return (
                         <td
                           key={dayInfo.day}
-                          className={`px-2 py-2 text-center border-r relative group cursor-pointer ${
+                          className={`px-2 py-2 text-center border-r relative group ${
                             isLowPoints ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
-                          }`}
-                          onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
+                          } ${isEditingThisCell ? "ring-2 ring-blue-500 bg-blue-50" : ""}`}
                         >
-                          <div className="flex items-center justify-center gap-1">
-                            <span>{totalDayPoints}</span>
-                            {bonus > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleBonusEdit(employeeId, dayInfo.day)
-                                }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Edit3 className="w-3 h-3 text-blue-600" />
-                              </button>
-                            )}
-                          </div>
+                          {isEditingThisCell ? (
+                            // Edit mode: Show input
+                            <div className="relative">
+                              <Input
+                                ref={attendanceInputRef}
+                                type="number"
+                                step="0.1"
+                                value={attendanceInputValue}
+                                onChange={(e) => setAttendanceInputValue(e.target.value)}
+                                onBlur={handleAttendanceSave}
+                                onKeyDown={handleAttendanceKeyDown}
+                                disabled={isUpdatingAttendance}
+                                className={`h-8 w-16 text-center p-1 text-sm mx-auto ${
+                                  isUpdatingAttendance ? 'opacity-50 cursor-wait' : ''
+                                }`}
+                              />
+                              {isUpdatingAttendance && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            // Display mode: Show value với click handlers
+                            <div 
+                              className="cursor-pointer"
+                              onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
+                              onDoubleClick={() => handleAttendanceEdit(employeeId, dayInfo.day, 'points', totalDayPoints)}
+                            >
+                              <div className="flex items-center justify-center gap-1">
+                                <span className="hover:bg-white hover:bg-opacity-50 px-1 rounded transition-colors">
+                                  {totalDayPoints}
+                                </span>
+                                {bonus > 0 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleBonusEdit(employeeId, dayInfo.day)
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <Edit3 className="w-3 h-3 text-blue-600" />
+                                  </button>
+                                )}
+                              </div>
 
-                          {/* Tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
-                            {record ? (
-                              <>
-                                <div>Sáng: {record.morningCheckIn || "Không có"}</div>
-                                <div>Chiều: {record.afternoonCheckIn || "Không có"}</div>
-                                <div>Điểm gốc: {record.points}</div>
-                                {bonus > 0 && <div>Điểm cộng: {bonus}</div>}
-                              </>
-                            ) : (
-                              <div>Không có dữ liệu chấm công</div>
-                            )}
-                          </div>
+                              {/* Enhanced Tooltip với edit hint */}
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
+                                {record ? (
+                                  <>
+                                    <div className="font-medium mb-1">📊 Chi tiết chấm công</div>
+                                    <div>🌅 Sáng: {record.morningCheckIn || "Không có"}</div>
+                                    <div>🌆 Chiều: {record.afternoonCheckIn || "Không có"}</div>
+                                    <div className="border-t border-gray-600 pt-1 mt-1">
+                                      <div>📈 Điểm gốc: {record.points}</div>
+                                      {bonus > 0 && <div>⭐ Điểm cộng: {bonus}</div>}
+                                      <div className="font-medium">🎯 Tổng: {totalDayPoints}</div>
+                                    </div>
+                                    <div className="text-yellow-300 text-center mt-1 text-xs">
+                                      💡 Double-click để chỉnh sửa<br/>
+                                      ⌨️ Enter: Lưu | Esc: Hủy
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>❌ Không có dữ liệu chấm công</div>
+                                    <div className="text-yellow-300 text-center mt-1 text-xs">
+                                      💡 Double-click để thêm điểm<br/>
+                                      ⌨️ Enter: Lưu | Esc: Hủy
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </td>
                       )
                     })}
