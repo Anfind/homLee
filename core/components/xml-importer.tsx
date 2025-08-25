@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Upload, FileText, Building2 } from "lucide-react"
-import type { AttendanceRecord, Employee, User, Department, CheckInSettings } from "@/app/page"
+import type { AttendanceRecord, Employee, Department, CheckInSettings } from "@/app/page"
+import type { UserType } from "@/components/login-form"
 
 interface XMLImporterProps {
   onImport: (records: AttendanceRecord[], employees: Employee[]) => void
-  user: User
+  user: UserType
   departments: Department[]
   checkInSettings: CheckInSettings // Đã có sẵn checkInSettings
 }
@@ -33,9 +34,9 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
   // Cập nhật hàm calculatePoints để sử dụng cấu hình ca làm việc mới
   const calculatePoints = (
     dateStr: string,
+    allCheckInSettings: CheckInSettings, // Truyền toàn bộ settings vào
     morningCheckIn?: string,
     afternoonCheckIn?: string,
-    allCheckInSettings: CheckInSettings, // Truyền toàn bộ settings vào
   ): number => {
     let points = 0
     const date = new Date(dateStr)
@@ -62,9 +63,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
         if (morningCheckInMinutes >= shiftStartMinutes && morningCheckInMinutes <= shiftEndMinutes) {
           points += shift.points
           morningPointsAwarded = true // Đánh dấu đã cộng điểm cho buổi sáng
-          console.log(
-            `Morning check-in ${morningCheckIn} awarded ${shift.points} points for shift '${shift.name}' on ${dateStr}`,
-          )
           break // Chỉ cộng điểm cho một ca duy nhất cho giờ chấm công buổi sáng
         }
       }
@@ -81,9 +79,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
         if (afternoonCheckInMinutes >= shiftStartMinutes && afternoonCheckInMinutes <= shiftEndMinutes) {
           points += shift.points
           afternoonPointsAwarded = true // Đánh dấu đã cộng điểm cho buổi chiều
-          console.log(
-            `Afternoon check-in ${afternoonCheckIn} awarded ${shift.points} points for shift '${shift.name}' on ${dateStr}`,
-          )
           break // Chỉ cộng điểm cho một ca duy nhất cho giờ chấm công buổi chiều
         }
       }
@@ -122,7 +117,7 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
           >()
           const employeeSet = new Set<string>()
 
-          console.log("Tổng số rows:", rows.length)
+          console.log(`📊 Processing ${rows.length} rows from XML file`)
 
           // Skip header rows (first 4 rows) và parse từ row thứ 5
           for (let i = 4; i < rows.length; i++) {
@@ -136,8 +131,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
               const nameCell = cells[3]?.querySelector("Data")?.textContent
               const timeInCell = cells[4]?.querySelector("Data")?.textContent
               const timeOutCell = cells[5]?.querySelector("Data")?.textContent
-
-              console.log(`Row ${i}:`, { dateCell, idCell, nameCell, timeInCell, timeOutCell })
 
               if (dateCell && idCell && nameCell) {
                 const date = new Date(dateCell).toISOString().split("T")[0]
@@ -156,7 +149,6 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
                     department: targetDepartment, // Sử dụng phòng ban được chọn
                   })
                   employeeSet.add(employeeId)
-                  console.log(`Created employee: ${employeeId} - ${employeeName} (${title}, ${targetDepartment})`)
                 }
 
                 let morningCheckIn: string | undefined
@@ -202,11 +194,13 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
             }
           }
 
+          console.log(`✅ Created ${employeeSet.size} employees and ${employeeRecords.size} attendance records`)
+
           // Chuyển đổi Map thành AttendanceRecord array
           employeeRecords.forEach((record, key) => {
             const employeeId = key.split("-")[0]
             // Truyền checkInSettings vào hàm calculatePoints
-            const points = calculatePoints(record.date, record.morningCheckIn, record.afternoonCheckIn, checkInSettings)
+            const points = calculatePoints(record.date, checkInSettings, record.morningCheckIn, record.afternoonCheckIn)
 
             records.push({
               employeeId,
@@ -216,15 +210,8 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
               points,
             })
 
-            console.log(`Employee ${employeeId} on ${record.date}:`, {
-              morning: record.morningCheckIn,
-              afternoon: record.afternoonCheckIn,
-              points,
-            })
           })
 
-          console.log("Final records:", records)
-          console.log("Final employees:", employees)
           resolve({ records, employees })
         } catch (error) {
           console.error("Parse error:", error)
@@ -250,17 +237,20 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
       return
     }
 
-    // Nếu là trưởng phòng, tự động sử dụng phòng của mình
-    if (user.role === "truongphong" && user.department) {
+    // Nếu là trưởng phòng hoặc quản lý phòng ban, tự động sử dụng phòng của mình
+    if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
       await processFile(file, user.department)
     }
   }
 
   const processFile = async (file: File, targetDepartment: string) => {
     setIsProcessing(true)
+    console.log(`🔄 Starting XML import for file: ${file.name}`)
 
     try {
+      console.log(`📝 Parsing XML file and calculating points...`)
       const { records, employees } = await parseXMLFile(file, targetDepartment)
+      console.log(`✅ Import completed: ${employees.length} employees, ${records.length} attendance records`)
       onImport(records, employees)
       alert(
         `Đã import thành công vào ${targetDepartment}:\n- ${employees.length} nhân viên\n- ${records.length} bản ghi chấm công`,

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Search, Download, History, Edit3, DollarSign, PlusSquare } from "lucide-react"
-import type { Employee, AttendanceRecord, BonusPoint, CustomDailyValue } from "@/app/page"
+import type { Employee, AttendanceRecord, BonusPoint, CustomDailyValue, PaginationData } from "@/app/page"
 import type { UserType } from "@/components/login-form"
 import * as XLSX from "xlsx"
 
@@ -19,9 +19,14 @@ interface AttendanceTableProps {
   customDailyValues: CustomDailyValue[]
   selectedMonth: string
   user: UserType
+  pagination: PaginationData
+  isLoading: boolean
   onBonusPointUpdate: (employeeId: string, date: string, points: number) => void
   onCustomValueUpdate: (employeeId: string, date: string, columnKey: string, value: string) => void
   onEmployeeUpdate: (employee: Employee) => void
+  onPageChange: (page: number) => void
+  onNextPage: () => void
+  onPrevPage: () => void
 }
 
 export function AttendanceTable({
@@ -31,15 +36,24 @@ export function AttendanceTable({
   customDailyValues,
   selectedMonth,
   user,
+  pagination,
+  isLoading,
   onBonusPointUpdate,
   onCustomValueUpdate,
   onEmployeeUpdate,
+  onPageChange,
+  onNextPage,
+  onPrevPage,
 }: AttendanceTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [editingBonus, setEditingBonus] = useState<{ employeeId: string; date: string } | null>(null)
   const [bonusValue, setBonusValue] = useState("")
   const [historyDialog, setHistoryDialog] = useState<{ employeeId: string; date: string } | null>(null)
+
+  // Client-side pagination cho employees (vì bây giờ hiển thị tất cả employees)
+  const [currentPage, setCurrentPage] = useState(1)
+  const EMPLOYEES_PER_PAGE = 40 // Hiển thị 40 nhân viên mỗi trang
 
   // Helper to get employeeId (handle both id and _id fields from MongoDB)
   const getEmployeeId = (employee: any): string => {
@@ -101,12 +115,13 @@ export function AttendanceTable({
     })
   }, [selectedMonth])
 
-  // Filter employees based on user role and search/filter criteria
+  // Filter employees based on user role and search/filter criteria - HIỂN THỊ TẤT CẢ NHÂN VIÊN
   const filteredEmployees = useMemo(() => {
-    let filtered = employees
+    // Bắt đầu với TẤT CẢ nhân viên thay vì chỉ những người có attendance records
+    let filtered = employees;
 
     // Role-based filtering
-    if (user.role === "truongphong" && user.department) {
+    if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
       filtered = filtered.filter((emp) => emp.department === user.department)
     }
 
@@ -125,30 +140,51 @@ export function AttendanceTable({
       filtered = filtered.filter((emp) => emp.department === departmentFilter)
     }
 
-    // Sort by ID (handle both id and _id fields)
+    // Sort by ID (numeric sorting for better order)
     filtered.sort((a, b) => {
-      const idA = getEmployeeId(a)
-      const idB = getEmployeeId(b)
-      return idA.localeCompare(idB, undefined, { numeric: true })
+      const idA = parseInt(getEmployeeId(a)) || 0
+      const idB = parseInt(getEmployeeId(b)) || 0
+      return idA - idB
     })
 
     return filtered
-  }, [employees, user, searchTerm, departmentFilter])
+  }, [employees, attendanceRecords, user, searchTerm, departmentFilter])
+
+  // Client-side pagination cho employees
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (currentPage - 1) * EMPLOYEES_PER_PAGE
+    const endIndex = startIndex + EMPLOYEES_PER_PAGE
+    const result = filteredEmployees.slice(startIndex, endIndex)
+    
+    return result
+  }, [filteredEmployees, currentPage])
+
+  // Tính toán pagination info cho employees
+  const employeePagination = useMemo(() => {
+    const totalEmployees = filteredEmployees.length
+    const totalPages = Math.ceil(totalEmployees / EMPLOYEES_PER_PAGE)
+    
+    return {
+      currentPage,
+      totalPages,
+      totalEmployees,
+      employeesPerPage: EMPLOYEES_PER_PAGE,
+      startIndex: (currentPage - 1) * EMPLOYEES_PER_PAGE + 1,
+      endIndex: Math.min(currentPage * EMPLOYEES_PER_PAGE, totalEmployees),
+      hasPrevPage: currentPage > 1,
+      hasNextPage: currentPage < totalPages
+    }
+  }, [filteredEmployees.length, currentPage])
+
+  // Reset về trang 1 khi filter thay đổi
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, departmentFilter])
 
   // Get attendance record for specific employee and date
   const getAttendanceRecord = (employeeId: string, day: number): AttendanceRecord | undefined => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
-    const record = attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
-    
-    // Debug first few calls
-    if (employeeId === "117" && day <= 5) {
-      console.log(`🔍 Looking for employee ${employeeId} on ${dateStr}:`)
-      console.log(`   - Found record:`, record)
-      console.log(`   - Total attendanceRecords:`, attendanceRecords.length)
-      console.log(`   - Sample records:`, attendanceRecords.slice(0, 2))
-    }
-    
-    return record
+    return attendanceRecords.find((record) => record.employeeId === employeeId && record.date === dateStr)
   }
 
   // Get bonus points for specific employee and date
@@ -158,14 +194,19 @@ export function AttendanceTable({
     // Find the employee to get both possible IDs
     const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
     
+    // Helper function to get actual employeeId from bonus point
+    const getBonusEmployeeId = (bp: BonusPoint): string => {
+      return typeof bp.employeeId === 'string' ? bp.employeeId : bp.employeeId._id
+    }
+    
     // Try to find bonus points with current employeeId first
-    let bonus = bonusPoints.find((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    let bonus = bonusPoints.find((bp) => getBonusEmployeeId(bp) === employeeId && bp.date === dateStr)
     
     // If not found and employee has alternative ID, try with that
     if (!bonus && employee) {
       const altId = employee.id !== employeeId ? employee.id : employee._id
       if (altId && altId !== employeeId) {
-        bonus = bonusPoints.find((bp) => bp.employeeId === altId && bp.date === dateStr)
+        bonus = bonusPoints.find((bp) => getBonusEmployeeId(bp) === altId && bp.date === dateStr)
       }
     }
     
@@ -202,14 +243,19 @@ export function AttendanceTable({
     // Find the employee to get both possible IDs
     const employee = employees.find(emp => getEmployeeId(emp) === employeeId)
     
+    // Helper function to get actual employeeId from bonus point
+    const getBonusEmployeeId = (bp: BonusPoint): string => {
+      return typeof bp.employeeId === 'string' ? bp.employeeId : bp.employeeId._id
+    }
+    
     // Get bonus points for current employeeId
-    let bonusHistory = bonusPoints.filter((bp) => bp.employeeId === employeeId && bp.date === dateStr)
+    let bonusHistory = bonusPoints.filter((bp) => getBonusEmployeeId(bp) === employeeId && bp.date === dateStr)
     
     // If employee has alternative ID, also get bonus points for that ID
     if (employee) {
       const altId = employee.id !== employeeId ? employee.id : employee._id
       if (altId && altId !== employeeId) {
-        const altBonusHistory = bonusPoints.filter((bp) => bp.employeeId === altId && bp.date === dateStr)
+        const altBonusHistory = bonusPoints.filter((bp) => getBonusEmployeeId(bp) === altId && bp.date === dateStr)
         bonusHistory = [...bonusHistory, ...altBonusHistory]
       }
     }
@@ -303,7 +349,7 @@ export function AttendanceTable({
       return
     }
 
-    const data = filteredEmployees.map((employee, index) => {
+    const data = paginatedEmployees.map((employee, index) => {
       const employeeId = getEmployeeId(employee)
       const row: any = {
         STT: index + 1,
@@ -335,8 +381,6 @@ export function AttendanceTable({
 
       return row
     })
-
-    console.log("Data for Excel export:", data) // Debugging log
 
     try {
       const ws = XLSX.utils.json_to_sheet(data)
@@ -370,44 +414,7 @@ export function AttendanceTable({
 
   return (
     <div className="space-y-4">
-      {/* Debug Panel - Always visible at top */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-yellow-800">
-            <strong>Debug Info:</strong> selectedMonth: {selectedMonth} | attendanceRecords: {attendanceRecords.length}
-          </div>
-          <Button 
-            onClick={() => {
-              console.log(`🔍 DETAILED DEBUG INFO:`)
-              console.log(`   - selectedMonth: ${selectedMonth}`)
-              console.log(`   - attendanceRecords.length: ${attendanceRecords.length}`)
-              console.log(`   - Sample records:`, attendanceRecords.slice(0, 3))
-              console.log(`   - Looking for employee 117 on 2025-03-04:`, 
-                attendanceRecords.find(r => r.employeeId === "117" && r.date === "2025-03-04"))
-              
-              // Test getAttendanceRecord for March 4th (day 4 of March)
-              const record = getAttendanceRecord("117", 4)
-              console.log(`   - getAttendanceRecord("117", 4):`, record)
-              
-              // Test all employees for day 4
-              const allRecordsDay4 = employees.slice(0, 3).map(emp => ({
-                employeeId: emp.id,
-                record: getAttendanceRecord(emp.id, 4),
-                points: getAttendanceRecord(emp.id, 4)?.points || 0
-              }))
-              console.log(`   - All employees day 4:`, allRecordsDay4)
-              
-              alert(`Debug info logged to console! Records: ${attendanceRecords.length}`)
-            }}
-            size="sm"
-            className="bg-yellow-600 hover:bg-yellow-700 text-white"
-          >
-            🔍 DEBUG CONSOLE
-          </Button>
-        </div>
-      </div>
-
-      {/* Search and Filter Controls */}
+      {/* Search and Filter Controls với thông tin tổng quan */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative">
@@ -437,28 +444,24 @@ export function AttendanceTable({
           )}
         </div>
 
+        {/* Thông tin tổng quan */}
+        <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+            <span className="font-medium">Tổng: {employees.length}</span> nhân viên
+          </div>
+          <div className="bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+            <span className="font-medium">Hiển thị: {filteredEmployees.length}</span> 
+            {searchTerm || departmentFilter !== "all" ? " (đã lọc)" : ""}
+          </div>
+          <div className="bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200">
+            <span className="font-medium">Trang: {employeePagination.currentPage}/{employeePagination.totalPages}</span>
+          </div>
+        </div>
+
         <div className="flex gap-2">
           <Button onClick={exportToExcel} className="flex items-center gap-2">
             <Download className="w-4 h-4" />
             Xuất Excel
-          </Button>
-          <Button 
-            onClick={() => {
-              console.log(`🔍 DEBUG INFO:`)
-              console.log(`   - selectedMonth: ${selectedMonth}`)
-              console.log(`   - attendanceRecords.length: ${attendanceRecords.length}`)
-              console.log(`   - Sample records:`, attendanceRecords.slice(0, 3))
-              console.log(`   - Looking for employee 117 on 2025-03-04:`, 
-                attendanceRecords.find(r => r.employeeId === "117" && r.date === "2025-03-04"))
-              
-              // Test getAttendanceRecord for March 4th (day 4 of March)
-              const record = getAttendanceRecord("117", 4)
-              console.log(`   - getAttendanceRecord("117", 4):`, record)
-            }}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            🔍 Debug
           </Button>
         </div>
       </div>
@@ -534,7 +537,23 @@ export function AttendanceTable({
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map((employee, index) => {
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center">
+                    <div className="flex items-center justify-center gap-2 text-gray-500">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      Đang tải dữ liệu...
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center text-gray-500">
+                    Không có dữ liệu chấm công cho tháng này
+                  </td>
+                </tr>
+              ) : (
+                paginatedEmployees.map((employee, index) => {
                 const employeeId = getEmployeeId(employee)
                 const totalPoints = getTotalPoints(employeeId)
                 const totalBonusPoints = daysInMonth.reduce(
@@ -675,7 +694,8 @@ export function AttendanceTable({
                     ))}
                   </tr>
                 )
-              })}
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -742,6 +762,60 @@ export function AttendanceTable({
           </DialogContent>
         </Dialog>
       )}
+      
+      {/* Pagination Controls - Sử dụng employee pagination */}
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="text-sm text-gray-600">
+          Hiển thị {employeePagination.startIndex}-{employeePagination.endIndex} trong {employeePagination.totalEmployees} nhân viên
+          {employeePagination.totalPages > 1 && ` (Trang ${employeePagination.currentPage}/${employeePagination.totalPages})`}
+        </div>
+        
+        {employeePagination.totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={!employeePagination.hasPrevPage || isLoading}
+              className="text-sm"
+            >
+              ← Trước
+            </Button>
+            
+            {/* Page numbers */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, employeePagination.totalPages) }, (_, i) => {
+                const startPage = Math.max(1, employeePagination.currentPage - 2)
+                const pageNum = startPage + i
+                if (pageNum > employeePagination.totalPages) return null
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === employeePagination.currentPage ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={isLoading}
+                    className="w-8 h-8 p-0 text-sm"
+                  >
+                    {pageNum}
+                  </Button>
+                )
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(employeePagination.totalPages, prev + 1))}
+              disabled={!employeePagination.hasNextPage || isLoading}
+              className="text-sm"
+            >
+              Sau →
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

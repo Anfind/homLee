@@ -1,13 +1,16 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import Image from "next/image"
 import { AttendanceTable } from "@/components/attendance-table"
 import { LoginForm, UserType } from "@/components/login-form"
 import { Header } from "@/components/header"
 import { XMLImporter } from "@/components/xml-importer"
+import { XMLImportManager } from "@/components/xml-import-manager"
 import { EmployeeManagement } from "@/components/employee-management"
 import { DepartmentManagement } from "@/components/department-management"
 import { CheckInSettingsManagement } from "@/components/check-in-settings-management"
+import { ShiftInfoPanel } from "@/components/shift-info-panel"
 import DataSyncManager from "@/components/data-sync-manager"
 // Removed useLocalStorage - now using MongoDB only
 import { Calendar, Users, TrendingUp, FileSpreadsheet, UserPlus, Building2, Clock, Download, Settings } from "lucide-react"
@@ -30,12 +33,26 @@ export interface AttendanceRecord {
 }
 
 export interface BonusPoint {
-  employeeId: string
+  employeeId: string | {
+    _id: string
+    name: string
+    department: string
+    id: string
+  }
   date: string
   points: number
   editedBy: string
   editedAt: string
   previousValue: number
+}
+
+export interface PaginationData {
+  page: number
+  limit: number
+  totalCount: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
 }
 
 export interface Department {
@@ -135,20 +152,33 @@ export default function Home() {
   // MIGRATED: All data now uses MongoDB instead of localStorage
   const [departments, setDepartments] = useState<Department[]>([])
   const [employees, setEmployees] = useState<Employee[]>([]) // MongoDB employees only
+  const [users, setUsers] = useState<UserType[]>([]) // MongoDB users
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [bonusPoints, setBonusPoints] = useState<BonusPoint[]>([])
   const [customDailyValues, setCustomDailyValues] = useState<CustomDailyValue[]>([])
+  
+  // Pagination state
+  const [pagination, setPagination] = useState<PaginationData>({
+    page: 1,
+    limit: 40,
+    totalCount: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  })
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false)
   const [checkInSettings, setCheckInSettings] = useState<CheckInSettings>(defaultCheckInSettings)
   const [selectedMonth, setSelectedMonth] = useState(() => {
+    // Use current month (August 2025) where we have real data
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
     // Use March 2025 where we have sample data
-    return "2025-03"
-    // Use current month to test with real data  
-    // const now = new Date()
-    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    // return "2025-03"
   })
   const [showEmployeeManagement, setShowEmployeeManagement] = useState(false)
   const [showDepartmentManagement, setShowDepartmentManagement] = useState(false)
   const [showCheckInSettingsManagement, setShowCheckInSettingsManagement] = useState(false)
+  const [showXMLImport, setShowXMLImport] = useState(false)
 
   // Load ALL MongoDB data on component mount
   useEffect(() => {
@@ -187,8 +217,18 @@ export default function Home() {
           }
         }
 
-        // Load attendance records from MongoDB for the selected month
-        console.log(`🔄 Fetching attendance records for month: ${selectedMonth}`)
+        // Load users from MongoDB
+        const usersResponse = await fetch('/api/users')
+        const usersResult = await usersResponse.json()
+        if (usersResult.success) {
+          setUsers(usersResult.data)
+          console.log(`✅ Loaded ${usersResult.data.length} users from MongoDB`)
+        } else {
+          console.log('❌ Failed to load users:', usersResult)
+        }
+
+        // Load ALL attendance records from MongoDB for the selected month (no pagination)
+        console.log(`🔄 Fetching ALL attendance records for month: ${selectedMonth}`)
         const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
         console.log(`📡 Attendance API response status:`, attendanceResponse.status)
         
@@ -197,7 +237,16 @@ export default function Home() {
         
         if (attendanceResult.success) {
           setAttendanceRecords(attendanceResult.data)
-          console.log(`✅ Loaded ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
+          // Reset pagination since we're doing client-side pagination now
+          setPagination({
+            page: 1,
+            limit: attendanceResult.data.length,
+            totalCount: attendanceResult.data.length,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false
+          })
+          console.log(`✅ Loaded ALL ${attendanceResult.data.length} attendance records from MongoDB for ${selectedMonth}`)
           console.log('📋 Sample attendance records:', attendanceResult.data.slice(0, 3))
           
           // Debug: Check if employees match attendance records
@@ -244,6 +293,8 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error loading MongoDB data:', error)
+      } finally {
+        setIsLoadingAttendance(false)
       }
     }
     
@@ -251,6 +302,66 @@ export default function Home() {
       fetchMongoData()
     }
   }, [currentUser, selectedMonth])
+
+  // Pagination handlers
+  const loadAttendancePage = async (page: number) => {
+    try {
+      setIsLoadingAttendance(true)
+      console.log(`🔄 Loading attendance page ${page}...`)
+      
+      const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}&page=${page}&limit=${pagination.limit}`)
+      const attendanceResult = await attendanceResponse.json()
+      
+      if (attendanceResult.success) {
+        setAttendanceRecords(attendanceResult.data)
+        setPagination(attendanceResult.pagination)
+        console.log(`✅ Loaded page ${page}/${attendanceResult.pagination.totalPages} (${attendanceResult.data.length} records)`)
+        
+        // Also reload bonus points and custom daily values for the month (no pagination needed)
+        const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+          console.log(`✅ Reloaded ${bonusPointsResult.data.length} bonus points`)
+        }
+
+        const customValuesResponse = await fetch(`/api/custom-daily-values?month=${selectedMonth}`)
+        const customValuesResult = await customValuesResponse.json()
+        if (customValuesResult.success) {
+          setCustomDailyValues(customValuesResult.data)
+          console.log(`✅ Reloaded ${customValuesResult.data.length} custom daily values`)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading attendance page:', error)
+    } finally {
+      setIsLoadingAttendance(false)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (pagination.hasNextPage) {
+      loadAttendancePage(pagination.page + 1)
+    }
+  }
+
+  const handlePrevPage = () => {
+    if (pagination.hasPrevPage) {
+      loadAttendancePage(pagination.page - 1)
+    }
+  }
+
+  const handlePageSelect = (page: number) => {
+    if (page !== pagination.page && page >= 1 && page <= pagination.totalPages) {
+      loadAttendancePage(page)
+    }
+  }
+
+  // Handle month change with pagination reset
+  const handleMonthChange = (newMonth: string) => {
+    setSelectedMonth(newMonth)
+    setPagination(prev => ({ ...prev, page: 1 })) // Reset to page 1
+  }
 
   const handleLogin = (userData: UserType) => {
     setCurrentUser(userData)
@@ -379,6 +490,9 @@ export default function Home() {
 
   const handleEmployeeAdd = async (employee: Employee) => {
     try {
+      // Optimistic update: Add employee to state immediately
+      setEmployees(prev => [...prev, employee])
+      
       const response = await fetch('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -387,23 +501,31 @@ export default function Home() {
 
       const result = await response.json()
       if (result.success) {
-        // Reload employees
-        const employeesResponse = await fetch('/api/employees')
-        const employeesResult = await employeesResponse.json()
-        if (employeesResult.success) {
-          setEmployees(employeesResult.data)
-          console.log(`✅ Added employee: ${employee.name}`)
-        }
+        // Update with actual data from server (in case server modified anything)
+        setEmployees(prev => prev.map(emp => emp.id === employee.id ? result.data : emp))
+        console.log(`✅ Added employee: ${employee.name}`)
       } else {
-        console.error('Failed to add employee:', result.message)
+        // Rollback optimistic update on error
+        setEmployees(prev => prev.filter(emp => emp.id !== employee.id))
+        console.error('Failed to add employee:', result.error)
+        alert(`Lỗi thêm nhân viên: ${result.error}`)
       }
     } catch (error) {
+      // Rollback optimistic update on error
+      setEmployees(prev => prev.filter(emp => emp.id !== employee.id))
       console.error('Error adding employee:', error)
+      alert('Lỗi kết nối khi thêm nhân viên')
     }
   }
 
   const handleEmployeeUpdate = async (updatedEmployee: Employee) => {
     try {
+      // Store original employee for rollback
+      const originalEmployee = employees.find(emp => emp.id === updatedEmployee.id)
+      
+      // Optimistic update: Update employee in state immediately
+      setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp))
+      
       const response = await fetch(`/api/employees`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -412,18 +534,25 @@ export default function Home() {
 
       const result = await response.json()
       if (result.success) {
-        // Reload employees
-        const employeesResponse = await fetch('/api/employees')
-        const employeesResult = await employeesResponse.json()
-        if (employeesResult.success) {
-          setEmployees(employeesResult.data)
-          console.log(`✅ Updated employee: ${updatedEmployee.name}`)
-        }
+        // Update with actual data from server
+        setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? result.data : emp))
+        console.log(`✅ Updated employee: ${updatedEmployee.name}`)
       } else {
-        console.error('Failed to update employee:', result.message)
+        // Rollback optimistic update on error
+        if (originalEmployee) {
+          setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? originalEmployee : emp))
+        }
+        console.error('Failed to update employee:', result.error)
+        alert(`Lỗi cập nhật nhân viên: ${result.error}`)
       }
     } catch (error) {
+      // Rollback optimistic update on error
+      const originalEmployee = employees.find(emp => emp.id === updatedEmployee.id)
+      if (originalEmployee) {
+        setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? originalEmployee : emp))
+      }
       console.error('Error updating employee:', error)
+      alert('Lỗi kết nối khi cập nhật nhân viên')
     }
   }
 
@@ -469,20 +598,107 @@ export default function Home() {
     }
   }
 
-  // Temporary stub functions for user management - these should be replaced with MongoDB API calls
-  const handleUserAdd = (user: UserType) => {
-    console.log('User add should call MongoDB API:', user)
-    // TODO: Call /api/users POST
+  // User management handlers
+  const handleUserAdd = async (user: UserType) => {
+    try {
+      // Optimistic update: Add user to state immediately
+      setUsers(prev => [...prev, user])
+      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Update with actual data from server
+        setUsers(prev => prev.map(u => u.username === user.username ? result.data : u))
+        console.log(`✅ Added user: ${user.username}`)
+      } else {
+        // Rollback optimistic update on error
+        setUsers(prev => prev.filter(u => u.username !== user.username))
+        console.error('Failed to add user:', result.error)
+        alert(`Lỗi thêm tài khoản: ${result.error}`)
+      }
+    } catch (error) {
+      // Rollback optimistic update on error
+      setUsers(prev => prev.filter(u => u.username !== user.username))
+      console.error('Error adding user:', error)
+      alert('Lỗi kết nối khi thêm tài khoản')
+    }
   }
 
-  const handleUserUpdate = (updatedUser: UserType) => {
-    console.log('User update should call MongoDB API:', updatedUser)
-    // TODO: Call /api/users PUT
+  const handleUserUpdate = async (updatedUser: UserType) => {
+    try {
+      // Store original user for rollback
+      const originalUser = users.find(u => u.username === updatedUser.username)
+      
+      // Optimistic update: Update user in state immediately
+      setUsers(prev => prev.map(u => u.username === updatedUser.username ? updatedUser : u))
+      
+      const response = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedUser)
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        // Update with actual data from server
+        setUsers(prev => prev.map(u => u.username === updatedUser.username ? result.data : u))
+        console.log(`✅ Updated user: ${updatedUser.username}`)
+      } else {
+        // Rollback optimistic update on error
+        if (originalUser) {
+          setUsers(prev => prev.map(u => u.username === updatedUser.username ? originalUser : u))
+        }
+        console.error('Failed to update user:', result.error)
+        alert(`Lỗi cập nhật tài khoản: ${result.error}`)
+      }
+    } catch (error) {
+      // Rollback optimistic update on error
+      const originalUser = users.find(u => u.username === updatedUser.username)
+      if (originalUser) {
+        setUsers(prev => prev.map(u => u.username === updatedUser.username ? originalUser : u))
+      }
+      console.error('Error updating user:', error)
+      alert('Lỗi kết nối khi cập nhật tài khoản')
+    }
   }
 
-  const handleUserDelete = (username: string) => {
-    console.log('User delete should call MongoDB API:', username)
-    // TODO: Call /api/users DELETE
+  const handleUserDelete = async (username: string) => {
+    try {
+      // Store original user for rollback
+      const originalUser = users.find(u => u.username === username)
+      
+      // Optimistic update: Remove user from state immediately
+      setUsers(prev => prev.filter(u => u.username !== username))
+      
+      const response = await fetch(`/api/users?username=${username}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        console.log(`✅ Deleted user: ${username}`)
+      } else {
+        // Rollback optimistic update on error
+        if (originalUser) {
+          setUsers(prev => [...prev, originalUser])
+        }
+        console.error('Failed to delete user:', result.error)
+        alert(`Lỗi xóa tài khoản: ${result.error}`)
+      }
+    } catch (error) {
+      // Rollback optimistic update on error
+      const originalUser = users.find(u => u.username === username)
+      if (originalUser) {
+        setUsers(prev => [...prev, originalUser])
+      }
+      console.error('Error deleting user:', error)
+      alert('Lỗi kết nối khi xóa tài khoản')
+    }
   }
 
   const handleDepartmentAdd = async (department: Department) => {
@@ -574,22 +790,44 @@ export default function Home() {
 
   const handleCheckInSettingsSave = async (newSettings: CheckInSettings) => {
     try {
-      const response = await fetch('/api/check-in-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settings: newSettings,
-          updatedBy: currentUser?.username || 'system'
+      // Send each day's settings separately to the API
+      const updatePromises = Object.keys(newSettings).map(async (dayIndexStr) => {
+        const dayOfWeek = Number.parseInt(dayIndexStr)
+        const daySettings = newSettings[dayOfWeek]
+        
+        const response = await fetch('/api/check-in-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dayOfWeek: dayOfWeek,
+            shifts: daySettings.shifts,
+            updatedBy: currentUser?.username || 'system'
+          })
         })
+
+        const result = await response.json()
+        if (!result.success) {
+          throw new Error(`Day ${dayOfWeek}: ${result.message}`)
+        }
+        return result
       })
 
-      const result = await response.json()
-      if (result.success) {
-        setCheckInSettings(newSettings)
-        console.log(`✅ Updated check-in settings`)
+      await Promise.all(updatePromises)
+      
+      console.log(`🔄 Reloading settings from database to ensure sync...`)
+      // Force reload settings from database to ensure sync
+      const settingsResponse = await fetch('/api/check-in-settings')
+      const settingsResult = await settingsResponse.json()
+      if (settingsResult.success) {
+        setCheckInSettings(settingsResult.data)
+        console.log(`✅ Settings synced successfully with header`)
       } else {
-        console.error('Failed to update check-in settings:', result.message)
+        setCheckInSettings(newSettings) // Fallback to local data
+        console.log(`⚠️ Fallback to local settings data`)
       }
+      
+      setShowCheckInSettingsManagement(false) // Close modal after successful save
+      console.log(`✅ Updated and reloaded check-in settings for all days`)
     } catch (error) {
       console.error('Error updating check-in settings:', error)
     }
@@ -615,24 +853,35 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={currentUser} onLogout={handleLogout} />
+      <Header user={currentUser} onLogout={handleLogout} checkInSettings={checkInSettings} />
 
       <div className="container mx-auto px-4 py-6">
         {/* Welcome Header */}
         <div className="mb-8">
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  Hệ thống chấm công HomeLee
-                </h1>
-                <p className="text-gray-600">
-                  Chào mừng <span className="font-semibold text-blue-600">{currentUser.name}</span> 
-                  <span className="text-sm bg-gray-100 px-2 py-1 rounded-full ml-2">
-                    {currentUser.role === "admin" ? "Quản trị viên" : 
-                     currentUser.role === "truongphong" ? "Trưởng phòng" : "Nhân viên"}
-                  </span>
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 relative">
+                  <Image
+                    src="/logo_leeHomes.webp"
+                    alt="Lee Homes Logo"
+                    width={64}
+                    height={64}
+                    className="object-contain rounded-xl"
+                  />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                    Hệ thống điểm danh Lee Homes
+                  </h1>
+                  <p className="text-gray-600">
+                    Chào mừng <span className="font-semibold text-blue-600">{currentUser.name}</span> 
+                    <span className="text-sm bg-gray-100 px-2 py-1 rounded-full ml-2">
+                      {currentUser.role === "admin" ? "Quản trị viên" : 
+                       currentUser.role === "truongphong" ? "Trưởng phòng" : "Nhân viên"}
+                    </span>
+                  </p>
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">
@@ -759,6 +1008,9 @@ export default function Home() {
           {/* SECONDARY SECTION: Controls Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             
+            {/* Shift Info Panel */}
+            <ShiftInfoPanel className="md:col-span-1" />
+            
             {/* Time Selection Panel */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-4">
@@ -779,7 +1031,7 @@ export default function Home() {
                     id="month-select"
                     type="month"
                     value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    onChange={(e) => handleMonthChange(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                   />
                 </div>
@@ -829,6 +1081,15 @@ export default function Home() {
                     >
                       <Clock className="w-4 h-4" />
                       Cấu hình giờ làm việc
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowXMLImport(true)}
+                      className="w-full justify-start gap-2 h-10"
+                    >
+                      <Download className="w-4 h-4" />
+                      Import XML/Excel
                     </Button>
                   </>
                 )}
@@ -967,7 +1228,7 @@ export default function Home() {
                       <div className="font-medium">Sample Bonus Points:</div>
                       {bonusPoints.slice(0, 3).map((bp, i) => (
                         <div key={i} className="text-xs">
-                          {bp.employeeId} | {bp.date} | {bp.points}đ
+                          {typeof bp.employeeId === 'string' ? bp.employeeId : bp.employeeId.name} | {bp.date} | {bp.points}đ
                         </div>
                       ))}
                     </div>
@@ -992,9 +1253,14 @@ export default function Home() {
                 customDailyValues={customDailyValues} // MongoDB data
                 selectedMonth={selectedMonth}
                 user={currentUser}
+                pagination={pagination}
+                isLoading={isLoadingAttendance}
                 onBonusPointUpdate={handleBonusPointUpdate}
                 onCustomValueUpdate={handleCustomValueUpdate}
                 onEmployeeUpdate={handleEmployeeUpdate}
+                onPageChange={handlePageSelect}
+                onNextPage={handleNextPage}
+                onPrevPage={handlePrevPage}
               />
             </div>
           </div>
@@ -1005,7 +1271,7 @@ export default function Home() {
           <DepartmentManagement
             departments={departments}
             employees={employees}
-            users={[]} // TODO: Fetch from MongoDB API
+            users={users} // MongoDB users
             onClose={() => setShowDepartmentManagement(false)}
             onDepartmentAdd={handleDepartmentAdd}
             onDepartmentUpdate={handleDepartmentUpdate}
@@ -1018,7 +1284,7 @@ export default function Home() {
         {showEmployeeManagement && (
           <EmployeeManagement
             employees={employees}
-            users={[]} // TODO: Fetch from MongoDB API
+            users={users} // MongoDB users
             departments={departments}
             currentUser={currentUser}
             onClose={() => setShowEmployeeManagement(false)}
@@ -1038,6 +1304,30 @@ export default function Home() {
             onSave={handleCheckInSettingsSave}
             onClose={() => setShowCheckInSettingsManagement(false)}
           />
+        )}
+
+        {/* XML Import Manager Modal */}
+        {showXMLImport && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Import Dữ Liệu Chấm Công từ XML/Excel
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowXMLImport(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  ✕
+                </Button>
+              </div>
+              <div className="p-6">
+                <XMLImportManager />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

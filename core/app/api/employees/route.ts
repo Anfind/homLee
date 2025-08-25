@@ -42,25 +42,34 @@ export async function POST(request: NextRequest) {
     // Validation
     if (!id || !name || !department) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: id, name, department' },
+        { success: false, error: 'Thiếu thông tin bắt buộc: ID, tên, và phòng ban' },
+        { status: 400 }
+      )
+    }
+    
+    // Trim and validate ID format
+    const trimmedId = id.trim()
+    if (!/^[0-9A-Za-z]{3,10}$/.test(trimmedId)) {
+      return NextResponse.json(
+        { success: false, error: 'ID nhân viên không hợp lệ (3-10 ký tự, chỉ chữ và số)' },
         { status: 400 }
       )
     }
     
     // Check if employee already exists
-    const existingEmployee = await Employee.findById(id)
+    const existingEmployee = await Employee.findById(trimmedId)
     if (existingEmployee) {
       return NextResponse.json(
-        { success: false, error: 'Employee with this ID already exists' },
+        { success: false, error: 'ID nhân viên đã tồn tại' },
         { status: 409 }
       )
     }
     
     const employee = new Employee({
-      _id: id,
-      name,
+      _id: trimmedId,
+      name: name.trim(),
       title: title || 'Nhân viên',
-      department
+      department: department.trim()
     })
     
     await employee.save()
@@ -68,12 +77,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: employee,
-      message: 'Employee created successfully'
+      message: 'Thêm nhân viên thành công'
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating employee:', error)
+    
+    // Handle specific MongoDB errors
+    if (error instanceof Error) {
+      if (error.message.includes('duplicate key')) {
+        return NextResponse.json(
+          { success: false, error: 'ID nhân viên đã tồn tại' },
+          { status: 409 }
+        )
+      }
+      if (error.message.includes('validation failed')) {
+        return NextResponse.json(
+          { success: false, error: 'Thông tin nhân viên không hợp lệ' },
+          { status: 400 }
+        )
+      }
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'Failed to create employee' },
+      { success: false, error: 'Lỗi máy chủ khi tạo nhân viên' },
       { status: 500 }
     )
   }

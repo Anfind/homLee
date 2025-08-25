@@ -15,7 +15,12 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const month = searchParams.get('month') // YYYY-MM format
     
-    console.log('📝 Query params:', { employeeId, date, startDate, endDate, month })
+    // Pagination parameters
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '40')
+    const skip = (page - 1) * limit
+    
+    console.log('📝 Query params:', { employeeId, date, startDate, endDate, month, page, limit, skip })
     
     let query: any = {}
     
@@ -33,18 +38,88 @@ export async function GET(request: NextRequest) {
     
     console.log('🔍 MongoDB query:', query)
     
-    // Remove populate since employeeId is string, not ObjectId reference
-    const records = await AttendanceRecord.find(query)
-      .sort({ date: -1, employeeId: 1 })
+    // Check if pagination is requested
+    const isPaginated = searchParams.has('page') || searchParams.has('limit')
     
-    console.log(`✅ Found ${records.length} attendance records`)
-    console.log('📋 Sample records:', records.slice(0, 2))
-    
-    return NextResponse.json({
-      success: true,
-      data: records,
-      count: records.length
-    })
+    if (isPaginated) {
+      // For pagination, we need to paginate by employees, not individual records
+      // First, get unique employee IDs that have attendance records, sorted numerically
+      const employeesPipeline = [
+        { $match: query },
+        { $group: { _id: "$employeeId" } },
+        {
+          $addFields: {
+            employeeIdNumeric: { $toInt: "$_id" }
+          }
+        },
+        { $sort: { employeeIdNumeric: 1 } },
+        {
+          $project: {
+            employeeIdNumeric: 0 // Remove the temporary field
+          }
+        }
+      ] as any[]
+      
+      const allEmployeesWithAttendance = await AttendanceRecord.aggregate(employeesPipeline)
+      const totalEmployees = allEmployeesWithAttendance.length
+      
+      // Get paginated employee IDs
+      const paginatedEmployeeIds = allEmployeesWithAttendance
+        .slice(skip, skip + limit)
+        .map(item => item._id)
+      
+      console.log(`📊 Pagination: showing employees ${skip + 1}-${Math.min(skip + limit, totalEmployees)} of ${totalEmployees}`)
+      console.log(`👥 Employee IDs for this page:`, paginatedEmployeeIds.slice(0, 5))
+      
+      // Get all attendance records for these employees in the selected month
+      const records = await AttendanceRecord.find({
+        ...query,
+        employeeId: { $in: paginatedEmployeeIds }
+      }).sort({ employeeId: 1, date: -1 })
+      
+      // Calculate pagination metadata based on employees
+      const totalPages = Math.ceil(totalEmployees / limit)
+      const hasNextPage = skip + limit < totalEmployees
+      const hasPrevPage = skip > 0
+      
+      console.log(`✅ Found ${records.length} attendance records for ${paginatedEmployeeIds.length} employees (page ${page}/${totalPages}, total employees: ${totalEmployees})`)
+      console.log('📋 Sample records:', records.slice(0, 2))
+      
+      return NextResponse.json({
+        success: true,
+        data: records,
+        pagination: {
+          page,
+          limit,
+          totalCount: totalEmployees, // Use total employees count for pagination
+          totalPages,
+          hasNextPage,
+          hasPrevPage
+        },
+        count: records.length
+      })
+    } else {
+      // No pagination - return ALL records for the query
+      console.log('📄 Fetching ALL attendance records (no pagination)')
+      const records = await AttendanceRecord.find(query).sort({ employeeId: 1, date: -1 })
+      
+      console.log(`✅ Found ALL ${records.length} attendance records`)
+      console.log('📋 Sample records:', records.slice(0, 2))
+      
+      return NextResponse.json({
+        success: true,
+        data: records,
+        pagination: {
+          page: 1,
+          limit: records.length,
+          totalCount: records.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false
+        },
+        count: records.length
+      })
+    }
   } catch (error) {
     console.error('Error fetching attendance records:', error)
     return NextResponse.json(

@@ -1,0 +1,861 @@
+{
+  "summary": {
+    "total": 142,
+    "exportedAt": "2025-08-24T05:01:22.539Z",
+    "description": "Employees without department assignment in Lee Homes attendance system"
+  },
+  "employees": [
+    {
+      "userId": "1",
+      "name": "PGD THANG",
+      "title": "Phó Giám Đốc",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "101",
+      "name": "Tienanh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "109",
+      "name": "Le",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "111",
+      "name": "Giang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "112",
+      "name": "Thu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "113",
+      "name": "Hang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "114",
+      "name": "Thu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "116",
+      "name": "Binh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "117",
+      "name": "Tien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "12",
+      "name": "Manh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "121",
+      "name": "Phuonganh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "122",
+      "name": "Tung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "123",
+      "name": "Tuan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "126",
+      "name": "Phuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "13",
+      "name": "Huyen",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "137",
+      "name": "Dung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "138",
+      "name": "Minh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "139",
+      "name": "Tinh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "141",
+      "name": "Tuan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "142",
+      "name": "Tuan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "144",
+      "name": "Quan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "15",
+      "name": "Ha",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "152",
+      "name": "Loan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "156",
+      "name": "Hang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "162",
+      "name": "Hien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "176",
+      "name": "Ha",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "181",
+      "name": "Hung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "186",
+      "name": "Duc",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "187",
+      "name": "Thuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "193",
+      "name": "Truong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "196",
+      "name": "Loan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "199",
+      "name": "Huong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "2",
+      "name": "Thuong",
+      "title": "Trưởng phòng",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "202",
+      "name": "Chuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "203",
+      "name": "Dung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "207",
+      "name": "Phuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "215",
+      "name": "Ha",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "216",
+      "name": "Thu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "217",
+      "name": "Hong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "222",
+      "name": "Nam",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "226",
+      "name": "Mai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "229",
+      "name": "Canh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "232",
+      "name": "Lam",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "233",
+      "name": "Son57",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "235",
+      "name": "Trang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "238",
+      "name": "Ha",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "240",
+      "name": "Nguyet",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "241",
+      "name": "Quoc",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "244",
+      "name": "Mai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "246",
+      "name": "Quynh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "248",
+      "name": "Thuy",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "250",
+      "name": "Thien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "261",
+      "name": "Luong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "263",
+      "name": "GDLE",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "264",
+      "name": "Luu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "269",
+      "name": "Tu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "273",
+      "name": "Thu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "276",
+      "name": "Kien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "281",
+      "name": "Tai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "282",
+      "name": "Toan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "283",
+      "name": "Hung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "284",
+      "name": "Phuonganh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "286",
+      "name": "Quang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "290",
+      "name": "Dien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "297",
+      "name": "Thoa",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "301",
+      "name": "Toan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "302",
+      "name": "Thi",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "304",
+      "name": "Tung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "306",
+      "name": "Hai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "308",
+      "name": "Lien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "311",
+      "name": "Nam",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "312",
+      "name": "Duong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "319",
+      "name": "Tien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "325",
+      "name": "Trieu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "328",
+      "name": "Camanh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "33",
+      "name": "Tham",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "340",
+      "name": "Hai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "341",
+      "name": "Hung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "346",
+      "name": "Anhtuan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "348",
+      "name": "Tung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "368",
+      "name": "Thuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "395",
+      "name": "Hang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "398",
+      "name": "Cham",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "4",
+      "name": "Phuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "401",
+      "name": "Luong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "403",
+      "name": "Trung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "405",
+      "name": "Hoa",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "412",
+      "name": "Nhat",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "417",
+      "name": "Tung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "418",
+      "name": "Tung22",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "433",
+      "name": "Thang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "437",
+      "name": "An",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "443",
+      "name": "Oanh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "446",
+      "name": "Lien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "483",
+      "name": "Ly",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "529",
+      "name": "NguyenPT",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "544",
+      "name": "Nguyen",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "551",
+      "name": "Cuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "552",
+      "name": "Thich",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "556",
+      "name": "Son",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "558",
+      "name": "Thuyet",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "559",
+      "name": "Thanh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "56",
+      "name": "Ngan",
+      "title": "Trưởng phòng",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "560",
+      "name": "Nga",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "561",
+      "name": "Ha",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "562",
+      "name": "Dung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "563",
+      "name": "Lich",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "564",
+      "name": "Trinhhung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "565",
+      "name": "Duc",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "566",
+      "name": "Hieu",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "567",
+      "name": "Ly",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "568",
+      "name": "Tinh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "569",
+      "name": "Hai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "570",
+      "name": "Tuoi",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "571",
+      "name": "Hien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "572",
+      "name": "Thai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "573",
+      "name": "Huong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "574",
+      "name": "Chi",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "575",
+      "name": "Quang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "576",
+      "name": "Quang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "577",
+      "name": "Sang",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "578",
+      "name": "Tien",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "579",
+      "name": "Hung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "580",
+      "name": "Hung",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "581",
+      "name": "Mai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "582",
+      "name": "Nam",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "583",
+      "name": "Quan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "6",
+      "name": "Doan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "68",
+      "name": "Toan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "69",
+      "name": "Hoan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "7",
+      "name": "Hai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "70",
+      "name": "Ut",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "74",
+      "name": "Phuong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "78",
+      "name": "Thao",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "79",
+      "name": "Ha",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "82",
+      "name": "Honganh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "85",
+      "name": "Khai",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "86",
+      "name": "Tan",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "90",
+      "name": "Huong",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "97",
+      "name": "Phuc",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "98",
+      "name": "Ly",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    },
+    {
+      "userId": "99",
+      "name": "Binh",
+      "title": "Nhân viên",
+      "createdAt": "2025-08-24T04:58:13.522Z"
+    }
+  ]
+}

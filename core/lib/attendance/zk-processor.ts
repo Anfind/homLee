@@ -4,49 +4,49 @@ import { CheckInSettings, Shift } from '@/app/page'
  * Utility để xử lý thời gian và tính điểm chấm công
  */
 
-// Default check-in settings (copy từ page.tsx)
+// Default check-in settings (EXACT company schedule)
 export const getDefaultCheckInSettings = (): CheckInSettings => {
   return {
-    0: { // Sunday
+    0: { // Sunday - Special timing
       shifts: [
-        { id: "sun-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-        { id: "sun-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+        { id: "sun-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "08:45", points: 1 },
+        { id: "sun-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:45", points: 1 },
       ],
     },
     1: { // Monday
       shifts: [
-        { id: "mon-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-        { id: "mon-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+        { id: "mon-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+        { id: "mon-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
       ],
     },
     2: { // Tuesday
       shifts: [
-        { id: "tue-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-        { id: "tue-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+        { id: "tue-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+        { id: "tue-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
       ],
     },
     3: { // Wednesday
       shifts: [
-        { id: "wed-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-        { id: "wed-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+        { id: "wed-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+        { id: "wed-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
       ],
     },
     4: { // Thursday
       shifts: [
-        { id: "thu-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-        { id: "thu-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+        { id: "thu-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+        { id: "thu-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
       ],
     },
     5: { // Friday
       shifts: [
-        { id: "fri-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-        { id: "fri-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+        { id: "fri-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+        { id: "fri-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
       ],
     },
     6: { // Saturday
       shifts: [
-        { id: "sat-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-        { id: "sat-shift-2", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
+        { id: "sat-shift-1", name: "Ca sáng", startTime: "07:00", endTime: "07:45", points: 1 },
+        { id: "sat-shift-2", name: "Ca chiều", startTime: "13:30", endTime: "14:00", points: 1 },
       ],
     },
   }
@@ -157,6 +157,13 @@ export function calculateDailyPoints(
   const dayOfWeek = new Date(date + 'T00:00:00').getDay()
   const dayShifts = checkInSettings[dayOfWeek]?.shifts || []
   
+  console.log(`🔍 [CALCULATE DEBUG] Date: ${date}, DayOfWeek: ${dayOfWeek}`)
+  console.log(`🔍 [CALCULATE DEBUG] Check-ins: [${checkIns.join(', ')}]`)
+  console.log(`🔍 [CALCULATE DEBUG] Available shifts for day ${dayOfWeek}:`)
+  dayShifts.forEach(shift => {
+    console.log(`   ${shift.name}: ${shift.startTime}-${shift.endTime} (${shift.points} điểm)`)
+  })
+  
   const awardedShifts: Array<{
     shiftId: string
     shiftName: string
@@ -169,9 +176,12 @@ export function calculateDailyPoints(
   
   // Duyệt qua từng check-in và kiểm tra với tất cả shifts
   for (const checkIn of sortedCheckIns) {
+    console.log(`🔍 [CALCULATE DEBUG] Processing check-in: ${checkIn}`)
+    
     for (const shift of dayShifts) {
       // Kiểm tra xem shift này đã được award chưa
       const alreadyAwarded = awardedShifts.some(awarded => awarded.shiftId === shift.id)
+      console.log(`   Testing ${shift.name} (${shift.startTime}-${shift.endTime}): already awarded = ${alreadyAwarded}`)
       
       if (!alreadyAwarded && isTimeInShift(checkIn, shift)) {
         awardedShifts.push({
@@ -181,13 +191,16 @@ export function calculateDailyPoints(
           points: shift.points
         })
         
-        console.log(`✅ Awarded ${shift.points} points for ${shift.name} at ${checkIn}`)
+        console.log(`✅ [CALCULATE DEBUG] Awarded ${shift.points} points for ${shift.name} at ${checkIn}`)
         break // Chỉ award 1 shift cho mỗi check-in
+      } else if (!alreadyAwarded) {
+        console.log(`   ❌ ${checkIn} not in range ${shift.startTime}-${shift.endTime}`)
       }
     }
   }
   
   const totalPoints = awardedShifts.reduce((sum, awarded) => sum + awarded.points, 0)
+  console.log(`🔍 [CALCULATE DEBUG] Final result: ${totalPoints} points`)
   
   return {
     totalPoints,
@@ -198,7 +211,11 @@ export function calculateDailyPoints(
 /**
  * Phân loại check-ins thành morning và afternoon (để tương thích với existing code)
  */
-export function categorizeCheckIns(checkIns: string[]): {
+export function categorizeCheckIns(
+  checkIns: string[], 
+  date?: string, 
+  checkInSettings?: CheckInSettings
+): {
   morningCheckIn?: string
   afternoonCheckIn?: string
 } {
@@ -207,16 +224,48 @@ export function categorizeCheckIns(checkIns: string[]): {
   // Sắp xếp theo thời gian
   const sorted = [...checkIns].sort((a, b) => a.localeCompare(b))
   
-  // Tìm check-in sáng (trước 12:00)
+  // Determine day of week for shift timing (default to weekday if no date provided)
+  let dayOfWeek = 1 // Default to Monday (weekday)
+  if (date) {
+    const dateObj = new Date(date)
+    dayOfWeek = dateObj.getDay() // 0 = Sunday, 1 = Monday, etc.
+  }
+  
+  // Get shift settings for this day - use provided settings or fallback to defaults
+  const settings = checkInSettings || getDefaultCheckInSettings()
+  const dayShifts = settings[dayOfWeek]?.shifts || settings[1].shifts // Fallback to Monday
+  
+  console.log(`🔍 categorizeCheckIns: Using ${checkInSettings ? 'MongoDB' : 'default'} settings for day ${dayOfWeek}:`, dayShifts.map(s => `${s.name} ${s.startTime}-${s.endTime} (${s.points}pts)`).join(', '))
+  
+  // Find morning and afternoon shifts
+  const morningShift = dayShifts.find(shift => shift.name === 'Ca sáng')
+  const afternoonShift = dayShifts.find(shift => shift.name === 'Ca chiều')
+  
+  // Find check-in times that fall within actual shift ranges
   const morningCheckIn = sorted.find(time => {
-    const [hour] = time.split(':').map(Number)
-    return hour < 12
+    if (!morningShift) return false
+    const [hour, minute] = time.split(':').map(Number)
+    const timeInMinutes = hour * 60 + minute
+    
+    const [startHour, startMinute] = morningShift.startTime.split(':').map(Number)
+    const [endHour, endMinute] = morningShift.endTime.split(':').map(Number)
+    const startTimeInMinutes = startHour * 60 + startMinute
+    const endTimeInMinutes = endHour * 60 + endMinute
+    
+    return timeInMinutes >= startTimeInMinutes && timeInMinutes <= endTimeInMinutes
   })
   
-  // Tìm check-in chiều (từ 12:00 trở đi)
   const afternoonCheckIn = sorted.find(time => {
-    const [hour] = time.split(':').map(Number)
-    return hour >= 12
+    if (!afternoonShift) return false
+    const [hour, minute] = time.split(':').map(Number)
+    const timeInMinutes = hour * 60 + minute
+    
+    const [startHour, startMinute] = afternoonShift.startTime.split(':').map(Number)
+    const [endHour, endMinute] = afternoonShift.endTime.split(':').map(Number)
+    const startTimeInMinutes = startHour * 60 + startMinute
+    const endTimeInMinutes = endHour * 60 + endMinute
+    
+    return timeInMinutes >= startTimeInMinutes && timeInMinutes <= endTimeInMinutes
   })
   
   return {

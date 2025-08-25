@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { UserPlus, Users, Key, Edit, Trash2, Eye, EyeOff } from "lucide-react"
-import type { Employee, User, Department } from "@/app/page"
+import type { Employee, Department } from "@/app/page"
+import type { UserType as User } from "./login-form"
 
 interface EmployeeManagementProps {
   employees: Employee[]
@@ -45,6 +46,7 @@ export function EmployeeManagement({
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Employee form state
   const [employeeForm, setEmployeeForm] = useState({
@@ -59,17 +61,33 @@ export function EmployeeManagement({
     username: "",
     password: "",
     name: "",
-    role: "truongphong" as "admin" | "truongphong",
+    role: "truongphong" as "admin" | "truongphong" | "department_manager",
     department: "",
   })
 
   const [showPassword, setShowPassword] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const departmentNames = departments.map((d) => d.name)
 
-  // Filter data based on user role
-  const filteredEmployees =
-    currentUser.role === "admin" ? employees : employees.filter((emp) => emp.department === currentUser.department)
+  // Memoize filtered data for better performance
+  const filteredEmployees = useMemo(() => {
+    let filtered = currentUser.role === "admin" 
+      ? employees 
+      : employees.filter((emp) => emp.department === currentUser.department)
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(emp => 
+        emp.name.toLowerCase().includes(term) ||
+        emp.id.toLowerCase().includes(term) ||
+        emp.department.toLowerCase().includes(term) ||
+        emp.title.toLowerCase().includes(term)
+      )
+    }
+    
+    return filtered
+  }, [employees, currentUser.role, currentUser.department, searchTerm])
 
   const filteredUsers =
     currentUser.role === "admin"
@@ -84,6 +102,7 @@ export function EmployeeManagement({
       department: currentUser.role === "truongphong" ? currentUser.department || "" : "",
     })
     setEditingEmployee(null)
+    setIsSubmitting(false)
   }
 
   const resetUserForm = () => {
@@ -98,7 +117,7 @@ export function EmployeeManagement({
     setShowPassword(false)
   }
 
-  const handleEmployeeSubmit = (e: React.FormEvent) => {
+  const handleEmployeeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!employeeForm.id || !employeeForm.name || !employeeForm.department) {
@@ -125,17 +144,24 @@ export function EmployeeManagement({
       department: employeeForm.department,
     }
 
-    if (editingEmployee) {
-      onEmployeeUpdate(employee)
-    } else {
-      onEmployeeAdd(employee)
-    }
+    setIsSubmitting(true)
+    try {
+      if (editingEmployee) {
+        await onEmployeeUpdate(employee)
+      } else {
+        await onEmployeeAdd(employee)
+      }
 
-    resetEmployeeForm()
-    setShowAddEmployee(false)
+      resetEmployeeForm()
+      setShowAddEmployee(false)
+    } catch (error) {
+      console.error('Error submitting employee:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleUserSubmit = (e: React.FormEvent) => {
+  const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!userForm.username || !userForm.password || !userForm.name) {
@@ -143,8 +169,8 @@ export function EmployeeManagement({
       return
     }
 
-    if (userForm.role === "truongphong" && !userForm.department) {
-      alert("Vui lòng chọn phòng ban cho trưởng phòng")
+    if ((userForm.role === "truongphong" || userForm.role === "department_manager") && !userForm.department) {
+      alert("Vui lòng chọn phòng ban cho trưởng phòng/quản lý phòng ban")
       return
     }
 
@@ -154,28 +180,35 @@ export function EmployeeManagement({
       return
     }
 
-    // Check duplicate username
-    if (!editingUser && users.some((user) => user.username === userForm.username)) {
+    // Check duplicate username (client-side check)
+    if (!editingUser && users.some((user) => user.username === userForm.username.toLowerCase().trim())) {
       alert("Tên đăng nhập đã tồn tại")
       return
     }
 
     const user: User = {
-      username: userForm.username,
+      username: userForm.username.toLowerCase().trim(),
       password: userForm.password,
-      name: userForm.name,
+      name: userForm.name.trim(),
       role: userForm.role,
-      department: userForm.role === "truongphong" ? userForm.department : undefined,
+      department: (userForm.role === "truongphong" || userForm.role === "department_manager") ? userForm.department : undefined,
     }
 
-    if (editingUser) {
-      onUserUpdate(user)
-    } else {
-      onUserAdd(user)
-    }
+    setIsSubmitting(true)
+    try {
+      if (editingUser) {
+        await onUserUpdate(user)
+      } else {
+        await onUserAdd(user)
+      }
 
-    resetUserForm()
-    setShowAddUser(false)
+      resetUserForm()
+      setShowAddUser(false)
+    } catch (error) {
+      console.error('Error submitting user:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleEditEmployee = (employee: Employee) => {
@@ -187,7 +220,7 @@ export function EmployeeManagement({
   const handleEditUser = (user: User) => {
     setUserForm({
       username: user.username,
-      password: user.password,
+      password: user.password || "",
       name: user.name,
       role: user.role,
       department: user.department || "",
@@ -229,50 +262,64 @@ export function EmployeeManagement({
           </TabsList>
 
           <TabsContent value="employees" className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center gap-4">
               <h3 className="text-lg font-semibold">Danh sách nhân viên</h3>
-              <Button onClick={() => setShowAddEmployee(true)} className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4" />
-                Thêm nhân viên
-              </Button>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Tìm kiếm nhân viên..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-64"
+                />
+                <Button onClick={() => setShowAddEmployee(true)} className="flex items-center gap-2">
+                  <UserPlus className="w-4 h-4" />
+                  Thêm nhân viên
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-4 max-h-96 overflow-y-auto">
-              {filteredEmployees.map((employee) => (
-                <Card key={employee.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold">{employee.name.charAt(0)}</span>
+              {filteredEmployees.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {searchTerm ? "Không tìm thấy nhân viên nào" : "Chưa có nhân viên nào"}
+                </div>
+              ) : (
+                filteredEmployees.map((employee) => (
+                  <Card key={employee.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold">{employee.name.charAt(0)}</span>
+                          </div>
+                          <div>
+                            <div className="font-medium">
+                              {employee.name} <span className="text-gray-500">({employee.id})</span>
+                            </div>
+                            <div className="text-sm text-gray-600 flex items-center gap-2">
+                              <Badge variant="outline">{employee.title}</Badge>
+                              <span>{employee.department}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium">
-                            {employee.name} <span className="text-gray-500">({employee.id})</span>
-                          </div>
-                          <div className="text-sm text-gray-600 flex items-center gap-2">
-                            <Badge variant="outline">{employee.title}</Badge>
-                            <span>{employee.department}</span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleEditEmployee(employee)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteEmployee(employee.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEditEmployee(employee)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteEmployee(employee.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </TabsContent>
 
@@ -300,7 +347,8 @@ export function EmployeeManagement({
                           </div>
                           <div className="text-sm text-gray-600 flex items-center gap-2">
                             <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                              {user.role === "admin" ? "Quản trị viên" : "Trưởng phòng"}
+                              {user.role === "admin" ? "Quản trị viên" : 
+                               user.role === "department_manager" ? "Quản lý phòng ban" : "Trưởng phòng"}
                             </Badge>
                             {user.department && <span>{user.department}</span>}
                           </div>
@@ -341,10 +389,11 @@ export function EmployeeManagement({
                   <label className="block text-sm font-medium text-gray-700 mb-1">ID nhân viên</label>
                   <Input
                     value={employeeForm.id}
-                    onChange={(e) => setEmployeeForm({ ...employeeForm, id: e.target.value })}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, id: e.target.value.trim().toUpperCase() })}
                     placeholder="Ví dụ: 00123"
-                    disabled={!!editingEmployee}
+                    disabled={!!editingEmployee || isSubmitting}
                     required
+                    maxLength={10}
                   />
                 </div>
                 <div>
@@ -353,6 +402,7 @@ export function EmployeeManagement({
                     value={employeeForm.name}
                     onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
                     placeholder="Nhập họ và tên"
+                    disabled={isSubmitting}
                     required
                   />
                 </div>
@@ -395,7 +445,9 @@ export function EmployeeManagement({
                   <Button type="button" variant="outline" onClick={() => setShowAddEmployee(false)}>
                     Hủy
                   </Button>
-                  <Button type="submit">{editingEmployee ? "Cập nhật" : "Thêm"}</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Đang xử lý..." : (editingEmployee ? "Cập nhật" : "Thêm")}
+                  </Button>
                 </div>
               </form>
             </DialogContent>
@@ -453,7 +505,7 @@ export function EmployeeManagement({
                   <label className="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
                   <Select
                     value={userForm.role}
-                    onValueChange={(value: "admin" | "truongphong") => setUserForm({ ...userForm, role: value })}
+                    onValueChange={(value: "admin" | "truongphong" | "department_manager") => setUserForm({ ...userForm, role: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -461,10 +513,11 @@ export function EmployeeManagement({
                     <SelectContent>
                       <SelectItem value="admin">Quản trị viên</SelectItem>
                       <SelectItem value="truongphong">Trưởng phòng</SelectItem>
+                      <SelectItem value="department_manager">Quản lý phòng ban</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {userForm.role === "truongphong" && (
+                {(userForm.role === "truongphong" || userForm.role === "department_manager") && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
                     <Select
@@ -488,7 +541,9 @@ export function EmployeeManagement({
                   <Button type="button" variant="outline" onClick={() => setShowAddUser(false)}>
                     Hủy
                   </Button>
-                  <Button type="submit">{editingUser ? "Cập nhật" : "Tạo"}</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Đang xử lý..." : (editingUser ? "Cập nhật" : "Tạo")}
+                  </Button>
                 </div>
               </form>
             </DialogContent>

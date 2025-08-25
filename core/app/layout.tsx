@@ -2,11 +2,16 @@ import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
+import { AutoSyncInitializer } from '@/components/auto-sync-initializer'
 
 export const metadata: Metadata = {
-  title: 'HomeLee Attendance System',
-  description: 'Hệ thống chấm công thông minh với ZKTeco integration',
+  title: 'Hệ thống điểm danh Lee Homes',
+  description: 'Hệ thống chấm công thông minh với ZKTeco integration cho Lee Homes',
   generator: 'Next.js',
+  icons: {
+    icon: '/logo_leeHomes.webp',
+    apple: '/logo_leeHomes.webp',
+  },
 }
 
 export default function RootLayout({
@@ -25,7 +30,10 @@ html {
 }
         `}</style>
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <AutoSyncInitializer />
+        {children}
+      </body>
     </html>
   )
 }

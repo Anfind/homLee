@@ -190,10 +190,11 @@ export function CheckInSettingsManagement({ currentSettings, onSave, onClose }: 
                       <Input
                         id={`points-${dayIndex}-${shiftIdx}`}
                         type="number"
-                        value={shift.points}
-                        onChange={(e) =>
-                          handleShiftChange(dayIndex, shift.id, "points", Number.parseFloat(e.target.value))
-                        }
+                        value={isNaN(shift.points) ? "" : shift.points}
+                        onChange={(e) => {
+                          const value = e.target.value === "" ? 0 : Number.parseFloat(e.target.value)
+                          handleShiftChange(dayIndex, shift.id, "points", isNaN(value) ? 0 : value)
+                        }}
                         className={errors[`day-${dayIndex}-shift-${shiftIdx}-points`] ? "border-red-500" : ""}
                       />
                       {errors[`day-${dayIndex}-shift-${shiftIdx}-points`] && (

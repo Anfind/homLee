@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +11,7 @@ import { Eye, EyeOff, Lock, Shield, Building2, Info, User } from "lucide-react"
 export interface UserType {
   username: string
   password?: string // For display only, not used in API
-  role: "admin" | "truongphong"
+  role: "admin" | "truongphong" | "department_manager"
   department?: string
   name: string
   lastLogin?: Date
@@ -40,7 +41,11 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             // Add demo passwords for display (these are not used for actual auth)
             const usersWithDemoPasswords = result.data.map((user: any) => ({
               ...user,
-              password: user.username === 'admin' ? 'admin123' : `${user.username}123`
+              password: user.username === 'admin' 
+                ? 'admin123' 
+                : user.role === 'department_manager' 
+                  ? `${user.username}2024`  // Đúng format cho department managers
+                  : `${user.username}123`   // Cho các role khác
             }))
             setUsers(usersWithDemoPasswords)
           }
@@ -104,15 +109,24 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   }
 
   const getRoleIcon = (role: string) => {
-    return role === "admin" ? <Shield className="w-4 h-4 text-red-500" /> : <User className="w-4 h-4 text-blue-500" />
+    if (role === "admin") return <Shield className="w-4 h-4 text-red-500" />
+    if (role === "department_manager") return <User className="w-4 h-4 text-green-500" />
+    return <User className="w-4 h-4 text-blue-500" />
   }
 
   const getRoleColor = (role: string) => {
-    return role === "admin" ? "bg-red-50 border-red-200" : "bg-blue-50 border-blue-200"
+    if (role === "admin") return "bg-red-50 border-red-200"
+    if (role === "department_manager") return "bg-green-50 border-green-200"
+    return "bg-blue-50 border-blue-200"
   }
 
   const getRoleName = (role: string) => {
-    return role === "admin" ? "Quản trị viên" : "Trưởng phòng"
+    switch (role) {
+      case "admin": return "Quản trị viên"
+      case "truongphong": return "Trưởng phòng"
+      case "department_manager": return "Quản lý phòng ban"
+      default: return "Nhân viên"
+    }
   }
 
   return (
@@ -120,10 +134,16 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       <div className="w-full max-w-lg" suppressHydrationWarning>
         <Card className="shadow-2xl border-0">
           <CardHeader className="text-center pb-4">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-10 h-10 text-white" />
+            <div className="w-24 h-24 mx-auto mb-4 relative">
+              <Image
+                src="/logo_leeHomes.webp"
+                alt="Lee Homes Logo"
+                width={96}
+                height={96}
+                className="object-contain rounded-xl"
+              />
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm Lee Homes</CardTitle>
+            <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm danh Lee Homes</CardTitle>
             <CardDescription className="text-gray-600 text-base">
               Đăng nhập để quản lý chấm công nhân viên
             </CardDescription>
@@ -161,11 +181,15 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                       <div className="flex items-center gap-3">
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            account.role === "admin" ? "bg-red-100" : "bg-blue-100"
+                            account.role === "admin" ? "bg-red-100" : 
+                            account.role === "department_manager" ? "bg-green-100" : "bg-blue-100"
                           }`}
                         >
                           <span
-                            className={`font-semibold ${account.role === "admin" ? "text-red-600" : "text-blue-600"}`}
+                            className={`font-semibold ${
+                              account.role === "admin" ? "text-red-600" : 
+                              account.role === "department_manager" ? "text-green-600" : "text-blue-600"
+                            }`}
                           >
                             {account.name.charAt(0)}
                           </span>

@@ -4,7 +4,7 @@ import mongoose, { Schema, Document } from 'mongoose'
 export interface IUser extends Document {
   username: string
   password: string // In production, this should be hashed
-  role: 'admin' | 'truongphong'
+  role: 'admin' | 'truongphong' | 'department_manager'
   department?: string
   name: string
   lastLogin?: Date
@@ -32,13 +32,13 @@ const UserSchema = new Schema<IUser>({
   role: {
     type: String,
     required: true,
-    enum: ['admin', 'truongphong'],
+    enum: ['admin', 'truongphong', 'department_manager'],
     default: 'truongphong'
   },
   department: {
     type: String,
     required: function(this: IUser) {
-      return this.role === 'truongphong'
+      return this.role === 'truongphong' || this.role === 'department_manager'
     }
   },
   name: {
