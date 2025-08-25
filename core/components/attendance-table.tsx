@@ -142,7 +142,10 @@ export function AttendanceTable({
 
     // Role-based filtering
     if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
-      filtered = filtered.filter((emp) => emp.department === user.department)
+      filtered = filtered.filter((emp) => 
+        emp.department && user.department && 
+        emp.department.toLowerCase().trim() === user.department.toLowerCase().trim()
+      )
     }
 
     // Search filtering

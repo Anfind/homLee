@@ -74,7 +74,10 @@ export function EmployeeManagement({
   const filteredEmployees = useMemo(() => {
     let filtered = currentUser.role === "admin" 
       ? employees 
-      : employees.filter((emp) => emp.department === currentUser.department)
+      : employees.filter((emp) => 
+          emp.department && currentUser.department && 
+          emp.department.toLowerCase().trim() === currentUser.department.toLowerCase().trim()
+        )
     
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
@@ -92,7 +95,12 @@ export function EmployeeManagement({
   const filteredUsers =
     currentUser.role === "admin"
       ? users
-      : users.filter((user) => user.department === currentUser.department || user.role === "admin")
+      : users.filter((user) => 
+          user.role === "admin" || (
+            user.department && currentUser.department && 
+            user.department.toLowerCase().trim() === currentUser.department.toLowerCase().trim()
+          )
+        )
 
   const resetEmployeeForm = () => {
     setEmployeeForm({
