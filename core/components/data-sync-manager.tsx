@@ -124,10 +124,10 @@ export default function DataSyncManager() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Đồng Bộ Nhân Viên
+            Đồng Bộ Nhân Sự
           </CardTitle>
           <CardDescription>
-            Đồng bộ danh sách nhân viên từ máy chấm công ZKTeco vào MongoDB
+            Đồng bộ danh sách nhân sự từ máy điểm danh ZKTeco vào MongoDB
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -147,13 +147,13 @@ export default function DataSyncManager() {
             ) : (
               <>
                 <Users className="mr-2 h-4 w-4" />
-                Đồng Bộ Nhân Viên
+                Đồng Bộ Nhân Sự
               </>
             )}
           </Button>
 
           {employeeResult && (
-            <ResultAlert result={employeeResult} title="Kết Quả Đồng Bộ Nhân Viên" />
+            <ResultAlert result={employeeResult} title="Kết Quả Đồng Bộ Nhân Sự" />
           )}
         </CardContent>
       </Card>
@@ -162,10 +162,10 @@ export default function DataSyncManager() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Đồng Bộ Chấm Công
+            Đồng Bộ Điểm Danh
           </CardTitle>
           <CardDescription>
-            Đồng bộ dữ liệu chấm công từ máy ZKTeco vào MongoDB với convert thời gian
+            Đồng bộ dữ liệu điểm danh từ máy ZKTeco vào MongoDB với convert thời gian
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -203,13 +203,13 @@ export default function DataSyncManager() {
             ) : (
               <>
                 <Clock className="mr-2 h-4 w-4" />
-                Đồng Bộ Chấm Công
+                Đồng Bộ Điểm Danh
               </>
             )}
           </Button>
 
           {attendanceResult && (
-            <ResultAlert result={attendanceResult} title="Kết Quả Đồng Bộ Chấm Công" />
+            <ResultAlert result={attendanceResult} title="Kết Quả Đồng Bộ Điểm Danh" />
           )}
         </CardContent>
       </Card>

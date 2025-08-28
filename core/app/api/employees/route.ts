@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const trimmedId = id.trim()
     if (!/^[0-9A-Za-z]{3,10}$/.test(trimmedId)) {
       return NextResponse.json(
-        { success: false, error: 'ID nhân viên không hợp lệ (3-10 ký tự, chỉ chữ và số)' },
+        { success: false, error: 'ID nhân sự không hợp lệ (3-10 ký tự, chỉ chữ và số)' },
         { status: 400 }
       )
     }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const existingEmployee = await Employee.findById(trimmedId)
     if (existingEmployee) {
       return NextResponse.json(
-        { success: false, error: 'ID nhân viên đã tồn tại' },
+        { success: false, error: 'ID nhân sự đã tồn tại' },
         { status: 409 }
       )
     }
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const employee = new Employee({
       _id: trimmedId,
       name: name.trim(),
-      title: title || 'Nhân viên',
+      title: title || 'Nhân sự',
       department: department.trim()
     })
     
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: employee,
-      message: 'Thêm nhân viên thành công'
+      message: 'Thêm nhân sự thành công'
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating employee:', error)
@@ -86,20 +86,20 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       if (error.message.includes('duplicate key')) {
         return NextResponse.json(
-          { success: false, error: 'ID nhân viên đã tồn tại' },
+          { success: false, error: 'ID nhân sự đã tồn tại' },
           { status: 409 }
         )
       }
       if (error.message.includes('validation failed')) {
         return NextResponse.json(
-          { success: false, error: 'Thông tin nhân viên không hợp lệ' },
+          { success: false, error: 'Thông tin nhân sự không hợp lệ' },
           { status: 400 }
         )
       }
     }
     
     return NextResponse.json(
-      { success: false, error: 'Lỗi máy chủ khi tạo nhân viên' },
+      { success: false, error: 'Lỗi máy chủ khi tạo nhân sự' },
       { status: 500 }
     )
   }

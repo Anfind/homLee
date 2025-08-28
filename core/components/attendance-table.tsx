@@ -55,7 +55,7 @@ export function AttendanceTable({
 
   // Client-side pagination cho employees (vì bây giờ hiển thị tất cả employees)
   const [currentPage, setCurrentPage] = useState(1)
-  const EMPLOYEES_PER_PAGE = 40 // Hiển thị 40 nhân viên mỗi trang
+  const EMPLOYEES_PER_PAGE = 40 // Hiển thị 40 nhân sự mỗi trang
 
   // Helper to get employeeId (handle both id and _id fields from MongoDB)
   const getEmployeeId = (employee: any): string => {
@@ -135,9 +135,9 @@ export function AttendanceTable({
     })
   }, [selectedMonth])
 
-  // Filter employees based on user role and search/filter criteria - HIỂN THỊ TẤT CẢ NHÂN VIÊN
+  // Filter employees based on user role and search/filter criteria - HIỂN THỊ TẤT CẢ NHÂN SỰ
   const filteredEmployees = useMemo(() => {
-    // Bắt đầu với TẤT CẢ nhân viên thay vì chỉ những người có attendance records
+    // Bắt đầu với TẤT CẢ nhân sự thay vì chỉ những người có attendance records
     let filtered = employees;
 
     // Role-based filtering
@@ -393,11 +393,11 @@ export function AttendanceTable({
         }
       } else {
         console.error('Failed to update attendance')
-        alert('Có lỗi khi cập nhật điểm chấm công')
+        alert('Có lỗi khi cập nhật điểm điểm danh')
       }
     } catch (error) {
       console.error('Error updating attendance:', error)
-      alert('Có lỗi khi cập nhật điểm chấm công')
+      alert('Có lỗi khi cập nhật điểm điểm danh')
     } finally {
       setIsUpdatingAttendance(false)
       setEditingAttendance(null)
@@ -423,7 +423,7 @@ export function AttendanceTable({
   // Export to Excel
   const exportToExcel = () => {
     if (filteredEmployees.length === 0) {
-      alert("Không có dữ liệu nhân viên để xuất Excel.")
+      alert("Không có dữ liệu nhân sự để xuất Excel.")
       return
     }
 
@@ -463,7 +463,7 @@ export function AttendanceTable({
     try {
       const ws = XLSX.utils.json_to_sheet(data)
       const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, "Chấm công")
+      XLSX.utils.book_append_sheet(wb, ws, "Điểm danh")
 
       // Use XLSX.write to get binary data and then trigger download in browser
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
@@ -525,7 +525,7 @@ export function AttendanceTable({
         {/* Thông tin tổng quan */}
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-            <span className="font-medium">Tổng: {employees.length}</span> nhân viên
+            <span className="font-medium">Tổng: {employees.length}</span> nhân sự
           </div>
           <div className="bg-green-50 px-3 py-2 rounded-lg border border-green-200">
             <span className="font-medium">Hiển thị: {filteredEmployees.length}</span> 
@@ -627,7 +627,7 @@ export function AttendanceTable({
               ) : filteredEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center text-gray-500">
-                    Không có dữ liệu chấm công cho tháng này
+                    Không có dữ liệu điểm danh cho tháng này
                   </td>
                 </tr>
               ) : (
@@ -735,7 +735,7 @@ export function AttendanceTable({
                               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
                                 {record ? (
                                   <>
-                                    <div className="font-medium mb-1">📊 Chi tiết chấm công</div>
+                                    <div className="font-medium mb-1">📊 Chi tiết điểm danh</div>
                                     <div>🌅 Sáng: {record.morningCheckIn || "Không có"}</div>
                                     <div>🌆 Chiều: {record.afternoonCheckIn || "Không có"}</div>
                                     <div className="border-t border-gray-600 pt-1 mt-1">
@@ -750,7 +750,7 @@ export function AttendanceTable({
                                   </>
                                 ) : (
                                   <>
-                                    <div>❌ Không có dữ liệu chấm công</div>
+                                    <div>❌ Không có dữ liệu điểm danh</div>
                                     <div className="text-yellow-300 text-center mt-1 text-xs">
                                       💡 Double-click để thêm điểm<br/>
                                       ⌨️ Enter: Lưu | Esc: Hủy
@@ -895,7 +895,7 @@ export function AttendanceTable({
       {/* Pagination Controls - Sử dụng employee pagination */}
       <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
         <div className="text-sm text-gray-600">
-          Hiển thị {employeePagination.startIndex}-{employeePagination.endIndex} trong {employeePagination.totalEmployees} nhân viên
+          Hiển thị {employeePagination.startIndex}-{employeePagination.endIndex} trong {employeePagination.totalEmployees} nhân sự
           {employeePagination.totalPages > 1 && ` (Trang ${employeePagination.currentPage}/${employeePagination.totalPages})`}
         </div>
         

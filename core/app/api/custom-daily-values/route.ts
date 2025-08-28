@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     if (!employee) {
       return NextResponse.json({
         success: false,
-        message: 'Không tìm thấy nhân viên'
+        message: 'Không tìm thấy nhân sự'
       }, { status: 404 })
     }
     

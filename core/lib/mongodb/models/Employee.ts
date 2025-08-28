@@ -24,7 +24,7 @@ const EmployeeSchema = new Schema<IEmployee>({
   title: {
     type: String,
     required: true,
-    default: 'Nhân viên'
+    default: 'Nhân sự'
   },
   department: {
     type: String,

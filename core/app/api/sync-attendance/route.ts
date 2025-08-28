@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (!zkData.success) {
       return NextResponse.json({
         success: false,
-        message: 'Không thể lấy dữ liệu chấm công từ ZKTeco backend',
+        message: 'Không thể lấy dữ liệu điểm danh từ ZKTeco backend',
         error: zkData.message
       }, { status: 500 })
     }
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: false,
-      message: 'Lỗi đồng bộ dữ liệu chấm công',
+      message: 'Lỗi đồng bộ dữ liệu điểm danh',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }

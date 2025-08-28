@@ -158,8 +158,8 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
   const finalId = numericId
   const newEmployee = {
     _id: finalId,
-    name: employeeName || `Nhân viên ${finalId}`,
-    title: 'Nhân viên',
+    name: employeeName || `Nhân sự ${finalId}`,
+    title: 'Nhân sự',
     department: 'Chưa phân loại'
   }
   
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
             employeeId,
             date: formattedDate,
             checkIns: [],
-            employeeName: employeeName || `Nhân viên ${employeeId}`
+            employeeName: employeeName || `Nhân sự ${employeeId}`
           })
         }
 

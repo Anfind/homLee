@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         const employeeData = {
           _id: zkEmployee.userId, // deviceUserId làm primary key
           name: zkEmployee.name.trim(),
-          title: 'Nhân viên', // Default title
+          title: 'Nhân sự', // Default title
           department: 'Chưa phân bổ' // Default department, sẽ cập nhật sau
         }
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: false,
-      message: 'Lỗi đồng bộ nhân viên',
+      message: 'Lỗi đồng bộ nhân sự',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }

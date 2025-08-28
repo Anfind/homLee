@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Building2, Plus, Edit, Trash2, Users, UserCheck } from "lucide-react"
-import type { Department, Employee, User } from "@/app/page"
+import type { Department, Employee } from "@/app/page"
+import type { UserType as User } from "@/components/login-form"
 
 interface DepartmentManagementProps {
   departments: Department[]
@@ -90,7 +91,7 @@ export function DepartmentManagement({
     if (employeeCount > 0 || userCount > 0) {
       if (
         !confirm(
-          `Phòng ban "${department.name}" có ${employeeCount} nhân viên và ${userCount} tài khoản.\n\nXóa phòng ban sẽ xóa tất cả nhân viên và tài khoản thuộc phòng này.\n\nBạn có chắc chắn muốn tiếp tục?`,
+          `Phòng ban "${department.name}" có ${employeeCount} nhân sự và ${userCount} tài khoản.\n\nXóa phòng ban sẽ xóa tất cả nhân sự và tài khoản thuộc phòng này.\n\nBạn có chắc chắn muốn tiếp tục?`,
         )
       ) {
         return
@@ -116,7 +117,7 @@ export function DepartmentManagement({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="w-5 h-5" />
-            Quản lý phòng ban ({departments.length})
+            Quản lý Khối/Phòng ({departments.length})
           </DialogTitle>
         </DialogHeader>
 
@@ -146,7 +147,7 @@ export function DepartmentManagement({
                           <div className="text-sm text-gray-600 flex items-center gap-4">
                             <div className="flex items-center gap-1">
                               <Users className="w-4 h-4" />
-                              <span>{stats.employeeCount} nhân viên</span>
+                              <span>{stats.employeeCount} nhân sự</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <UserCheck className="w-4 h-4" />

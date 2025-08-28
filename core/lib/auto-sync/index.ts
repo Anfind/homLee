@@ -1,5 +1,5 @@
 /**
- * Auto Sync Module - Tự động đồng bộ dữ liệu chấm công từ máy ZKTeco
+ * Auto Sync Module - Tự động đồng bộ dữ liệu điểm danh từ máy ZKTeco
  * 
  * Chức năng này có thể được bật/tắt dễ dàng bằng cách thay đổi flag AUTO_SYNC_ENABLED
  * Khi không cần thiết, chỉ cần set AUTO_SYNC_ENABLED = false

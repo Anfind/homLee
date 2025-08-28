@@ -101,7 +101,7 @@ export function XMLImportManager() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Import Dữ Liệu Chấm Công XML/Excel
+          Import Dữ Liệu Điểm Danh XML/Excel
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -152,7 +152,7 @@ export function XMLImportManager() {
           <div className="text-sm text-gray-600 space-y-1">
             <p>• <strong>Cột 1:</strong> STT (số thứ tự)</p>
             <p>• <strong>Cột 2:</strong> Ngày (định dạng datetime)</p>
-            <p>• <strong>Cột 3:</strong> ID (mã nhân viên)</p>
+            <p>• <strong>Cột 3:</strong> ID (mã nhân sự)</p>
             <p>• <strong>Cột 4:</strong> Họ và Tên</p>
             <p>• <strong>Cột 5:</strong> Giờ Vào (datetime với giờ:phút)</p>
             <p>• <strong>Cột 6:</strong> Giờ Ra (datetime với giờ:phút, có thể trống)</p>
@@ -246,7 +246,7 @@ export function XMLImportManager() {
         <div className="text-xs text-gray-500 space-y-1">
           <p>💡 <strong>Lưu ý:</strong></p>
           <p>• File XML phải được export từ Excel với cấu trúc đúng</p>
-          <p>• Hệ thống sẽ tự động group các lần chấm công theo ngày</p>
+          <p>• Hệ thống sẽ tự động group các lần điểm danh theo ngày</p>
           <p>• Điểm attendance sẽ được tính tự động theo quy tắc hiện tại</p>
           <p>• Nếu đã có dữ liệu ngày đó, hệ thống sẽ cập nhật (không tạo trùng)</p>
         </div>

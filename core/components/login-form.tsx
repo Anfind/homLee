@@ -10,6 +10,7 @@ import { Eye, EyeOff, Lock, Shield, Building2, Info, User } from "lucide-react"
 
 export interface UserType {
   username: string
+  newUsername?: string // For username changes during updates
   password?: string // For display only, not used in API
   role: "admin" | "truongphong" | "department_manager"
   department?: string
@@ -124,8 +125,8 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     switch (role) {
       case "admin": return "Quản trị viên"
       case "truongphong": return "Trưởng phòng"
-      case "department_manager": return "Quản lý phòng ban"
-      default: return "Nhân viên"
+      case "department_manager": return "Quản lý khối"
+      default: return "Nhân sự"
     }
   }
 
@@ -145,7 +146,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             </div>
             <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm danh Lee Homes</CardTitle>
             <CardDescription className="text-gray-600 text-base">
-              Đăng nhập để quản lý chấm công nhân viên
+              Đăng nhập để quản lý điểm danh nhân sự
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

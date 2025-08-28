@@ -222,7 +222,7 @@ export const ZKUtils = {
   getRoleDisplay: (role: number): string => {
     switch (role) {
       case 14: return 'Quản lý'
-      case 0: return 'Nhân viên'
+      case 0: return 'Nhân sự'
       default: return 'Không xác định'
     }
   },

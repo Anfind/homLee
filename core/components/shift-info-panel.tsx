@@ -44,7 +44,7 @@ export function ShiftInfoPanel({ className = "" }: ShiftInfoPanelProps) {
             }`} />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Khung giờ chấm công</h3>
+            <h3 className="font-semibold text-gray-900">Khung giờ điểm danh</h3>
             <p className="text-sm text-gray-600">{shiftInfo.dayName} hôm nay</p>
           </div>
         </div>
@@ -82,7 +82,7 @@ export function ShiftInfoPanel({ className = "" }: ShiftInfoPanelProps) {
 
         <div className="mt-3 pt-3 border-t border-gray-200">
           <p className="text-xs text-gray-500">
-            <strong>Lưu ý:</strong> Chỉ chấm công trong khung giờ trên mới được tính điểm
+            <strong>Lưu ý:</strong> Chỉ điểm danh trong khung giờ trên mới được tính điểm
           </p>
         </div>
       </CardContent>
