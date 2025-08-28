@@ -45,13 +45,13 @@ export function DepartmentManagement({
     e.preventDefault()
 
     if (!departmentName.trim()) {
-      alert("Vui lòng nhập tên phòng ban")
+      alert("Vui lòng nhập tên Khối/Phòng")
       return
     }
 
     // Check duplicate name
     if (!editingDepartment && departments.some((dept) => dept.name === departmentName.trim())) {
-      alert("Tên phòng ban đã tồn tại")
+      alert("Tên Khối/Phòng đã tồn tại")
       return
     }
 
@@ -91,13 +91,13 @@ export function DepartmentManagement({
     if (employeeCount > 0 || userCount > 0) {
       if (
         !confirm(
-          `Phòng ban "${department.name}" có ${employeeCount} nhân sự và ${userCount} tài khoản.\n\nXóa phòng ban sẽ xóa tất cả nhân sự và tài khoản thuộc phòng này.\n\nBạn có chắc chắn muốn tiếp tục?`,
+          `Khối/Phòng "${department.name}" có ${employeeCount} nhân sự và ${userCount} tài khoản.\n\nXóa Khối/Phòng sẽ xóa tất cả nhân sự và tài khoản thuộc phòng này.\n\nBạn có chắc chắn muốn tiếp tục?`,
         )
       ) {
         return
       }
     } else {
-      if (!confirm(`Bạn có chắc chắn muốn xóa phòng ban "${department.name}"?`)) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa Khối/Phòng "${department.name}"?`)) {
         return
       }
     }
@@ -123,7 +123,7 @@ export function DepartmentManagement({
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Danh sách phòng ban</h3>
+            <h3 className="text-lg font-semibold">Danh sách Khối/Phòng</h3>
             <Button onClick={() => setShowAddDialog(true)} className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Thêm Khối/Phòng
@@ -186,11 +186,11 @@ export function DepartmentManagement({
           <Dialog open={true} onOpenChange={() => setShowAddDialog(false)}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingDepartment ? "Sửa tên phòng ban" : "Thêm phòng ban mới"}</DialogTitle>
+                <DialogTitle>{editingDepartment ? "Sửa tên Khối/Phòng" : "Thêm Khối/Phòng mới"}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên phòng ban</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên Khối/Phòng</label>
                   <Input
                     value={departmentName}
                     onChange={(e) => setDepartmentName(e.target.value)}
