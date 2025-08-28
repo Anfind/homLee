@@ -455,6 +455,10 @@ export default function Home() {
 
   const handleBonusPointUpdate = async (employeeId: string, date: string, points: number) => {
     if (!currentUser) return
+    if (currentUser.role !== "admin") {
+      console.warn('Chỉ admin mới được phép chỉnh sửa điểm')
+      return
+    }
 
     try {
       const response = await fetch('/api/bonus-points', {
@@ -489,6 +493,10 @@ export default function Home() {
   // New handler for custom daily values
   const handleCustomValueUpdate = async (employeeId: string, date: string, columnKey: string, value: string) => {
     if (!currentUser) return
+    if (currentUser.role !== "admin") {
+      console.warn('Chỉ admin mới được phép chỉnh sửa điểm')
+      return
+    }
 
     try {
       const response = await fetch('/api/custom-daily-values', {

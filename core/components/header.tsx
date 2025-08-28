@@ -19,7 +19,7 @@ export function Header({ user, onLogout, checkInSettings }: HeaderProps) {
     switch (role) {
       case "admin": return "Quản trị viên"
       case "truongphong": return "Trưởng phòng"
-      case "department_manager": return "Quản lý phòng ban"
+      case "department_manager": return "Quản lý Khối/Phòng"
       default: return "Nhân sự"
     }
   }

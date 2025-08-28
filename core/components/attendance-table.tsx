@@ -299,6 +299,7 @@ export function AttendanceTable({
 
   // Handle bonus point editing (still uses dialog for daily bonus)
   const handleBonusEdit = (employeeId: string, day: number) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
     const currentBonus = getBonusPoints(employeeId, day)
     setEditingBonus({ employeeId, date: dateStr })
@@ -315,6 +316,7 @@ export function AttendanceTable({
 
   // Handle custom value editing (direct input)
   const handleCustomCellEdit = (employeeId: string, columnKey: string) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     // For monthly values, we associate them with the first day of the month
     const dateStr = daysInMonth[0].dateStr
     const currentValue = getCustomDailyValue(employeeId, dateStr, columnKey)
@@ -339,6 +341,7 @@ export function AttendanceTable({
 
   // Handle title editing (direct input)
   const handleEditTitle = (employeeId: string, currentTitle: string) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     setEditingTitle({ employeeId })
     setTitleInputValue(currentTitle)
   }
@@ -361,6 +364,7 @@ export function AttendanceTable({
 
   // Handlers for attendance inline editing
   const handleAttendanceEdit = (employeeId: string, day: number, field: 'morning' | 'afternoon' | 'points', currentValue: string | number) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     setEditingAttendance({ employeeId, day, field })
     setAttendanceInputValue(currentValue.toString())
   }
@@ -656,7 +660,7 @@ export function AttendanceTable({
                           onKeyDown={(e) => handleTitleKeyDown(e, employeeId)}
                           className="h-8 text-center p-1"
                         />
-                      ) : (
+                      ) : user.role === "admin" ? (
                         <button
                           onClick={() => handleEditTitle(employeeId, employee.title)}
                           className="flex items-center gap-1 mx-auto text-gray-600 hover:text-gray-800"
@@ -664,6 +668,8 @@ export function AttendanceTable({
                           {employee.title}
                           <Edit3 className="w-3 h-3" />
                         </button>
+                      ) : (
+                        <span className="text-gray-600">{employee.title}</span>
                       )}
                     </td>
 
@@ -710,15 +716,15 @@ export function AttendanceTable({
                           ) : (
                             // Display mode: Show value với click handlers
                             <div 
-                              className="cursor-pointer"
+                              className={user.role === "admin" ? "cursor-pointer" : ""}
                               onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
-                              onDoubleClick={() => handleAttendanceEdit(employeeId, dayInfo.day, 'points', totalDayPoints)}
+                              onDoubleClick={user.role === "admin" ? () => handleAttendanceEdit(employeeId, dayInfo.day, 'points', totalDayPoints) : undefined}
                             >
                               <div className="flex items-center justify-center gap-1">
                                 <span className="hover:bg-white hover:bg-opacity-50 px-1 rounded transition-colors">
                                   {totalDayPoints}
                                 </span>
-                                {bonus > 0 && (
+                                {bonus > 0 && user.role === "admin" && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -743,18 +749,22 @@ export function AttendanceTable({
                                       {bonus > 0 && <div>⭐ Điểm cộng: {bonus}</div>}
                                       <div className="font-medium">🎯 Tổng: {totalDayPoints}</div>
                                     </div>
-                                    <div className="text-yellow-300 text-center mt-1 text-xs">
-                                      💡 Double-click để chỉnh sửa<br/>
-                                      ⌨️ Enter: Lưu | Esc: Hủy
-                                    </div>
+                                    {user.role === "admin" && (
+                                      <div className="text-yellow-300 text-center mt-1 text-xs">
+                                        💡 Double-click để chỉnh sửa<br/>
+                                        ⌨️ Enter: Lưu | Esc: Hủy
+                                      </div>
+                                    )}
                                   </>
                                 ) : (
                                   <>
                                     <div>❌ Không có dữ liệu điểm danh</div>
-                                    <div className="text-yellow-300 text-center mt-1 text-xs">
-                                      💡 Double-click để thêm điểm<br/>
-                                      ⌨️ Enter: Lưu | Esc: Hủy
-                                    </div>
+                                    {user.role === "admin" && (
+                                      <div className="text-yellow-300 text-center mt-1 text-xs">
+                                        💡 Double-click để thêm điểm<br/>
+                                        ⌨️ Enter: Lưu | Esc: Hủy
+                                      </div>
+                                    )}
                                   </>
                                 )}
                               </div>
@@ -766,13 +776,17 @@ export function AttendanceTable({
 
                     <td className="px-3 py-2 text-center border-r font-semibold">{totalPoints}</td>
                     <td className="px-3 py-2 text-center border-r">
-                      <button
-                        onClick={() => handleBonusEdit(employeeId, 1)} // Default to day 1 for monthly bonus
-                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
-                      >
-                        {totalBonusPoints}
-                        <Edit3 className="w-3 h-3" />
-                      </button>
+                      {user.role === "admin" ? (
+                        <button
+                          onClick={() => handleBonusEdit(employeeId, 1)} // Default to day 1 for monthly bonus
+                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
+                        >
+                          {totalBonusPoints}
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <span className="text-gray-700">{totalBonusPoints}</span>
+                      )}
                     </td>
                     {/* Editable Commission Cell */}
                     <td className="px-3 py-2 text-center border-r">
@@ -787,7 +801,7 @@ export function AttendanceTable({
                           onKeyDown={handleCustomCellKeyDown}
                           className="h-8 text-center p-1"
                         />
-                      ) : (
+                      ) : user.role === "admin" ? (
                         <button
                           onClick={() => handleCustomCellEdit(employeeId, "commission")}
                           className="text-purple-600 hover:text-purple-800 flex items-center gap-1 mx-auto"
@@ -795,6 +809,10 @@ export function AttendanceTable({
                           {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission") || "Nhập"}
                           <DollarSign className="w-3 h-3" />
                         </button>
+                      ) : (
+                        <span className="text-gray-700">
+                          {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission") || "-"}
+                        </span>
                       )}
                     </td>
                     {/* Editable Custom Columns Cells */}
@@ -810,7 +828,7 @@ export function AttendanceTable({
                             onKeyDown={handleCustomCellKeyDown}
                             className="h-8 text-center p-1"
                           />
-                        ) : (
+                        ) : user.role === "admin" ? (
                           <button
                             onClick={() => handleCustomCellEdit(employeeId, col.key)}
                             className="text-gray-600 hover:text-gray-800 flex items-center gap-1 mx-auto"
@@ -818,6 +836,10 @@ export function AttendanceTable({
                             {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key) || "Nhập"}
                             <PlusSquare className="w-3 h-3" />
                           </button>
+                        ) : (
+                          <span className="text-gray-700">
+                            {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key) || "-"}
+                          </span>
                         )}
                       </td>
                     ))}
