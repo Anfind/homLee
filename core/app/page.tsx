@@ -932,7 +932,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Enhanced Stats Cards */}
+        {/* Enhanced Stats Cards - HIDDEN PER USER REQUEST */}
+        {/* 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-6 hover:shadow-md transition-all duration-200">
             <div className="flex items-center justify-between">
@@ -1017,6 +1018,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+        */}
 
         {/* Action Panels - FIXED LAYOUT */}
         <div className="space-y-6 mb-8">
