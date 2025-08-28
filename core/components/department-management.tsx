@@ -126,7 +126,7 @@ export function DepartmentManagement({
             <h3 className="text-lg font-semibold">Danh sách phòng ban</h3>
             <Button onClick={() => setShowAddDialog(true)} className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
-              Thêm phòng ban
+              Thêm Khối/Phòng
             </Button>
           </div>
 

@@ -1145,7 +1145,7 @@ export default function Home() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-purple-700">
-                      {currentUser.role === "admin" ? "Phòng ban" : "Báo cáo"}
+                      {currentUser.role === "admin" ? "Khối/Phòng" : "Báo cáo"}
                     </p>
                     <p className="text-xs text-purple-600">
                       {currentUser.role === "admin" ? "Đang quản lý" : "Tháng hiện tại"}

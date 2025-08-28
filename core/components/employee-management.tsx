@@ -67,6 +67,21 @@ export function EmployeeManagement({
 
   const [showPassword, setShowPassword] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showCustomTitle, setShowCustomTitle] = useState(false)
+  const [customTitle, setCustomTitle] = useState("")
+
+  // Danh sách chức vụ có sẵn
+  const predefinedTitles = [
+    "Nhân sự",
+    "Trưởng phòng", 
+    "Phó phòng",
+    "Chuyên viên",
+    // "Kế toán",
+    // "Thư ký",
+    // "Bảo vệ",
+    // "Lao công",
+    // "Tài xế"
+  ]
 
   const departmentNames = departments.map((d) => d.name)
 
@@ -111,6 +126,8 @@ export function EmployeeManagement({
     })
     setEditingEmployee(null)
     setIsSubmitting(false)
+    setShowCustomTitle(false)
+    setCustomTitle("")
   }
 
   const resetUserForm = () => {
@@ -148,7 +165,7 @@ export function EmployeeManagement({
     const employee: Employee = {
       id: employeeForm.id,
       name: employeeForm.name,
-      title: employeeForm.title,
+      title: showCustomTitle && customTitle.trim() ? customTitle.trim() : employeeForm.title,
       department: employeeForm.department,
     }
 
@@ -245,6 +262,16 @@ export function EmployeeManagement({
   const handleEditEmployee = (employee: Employee) => {
     setEmployeeForm(employee)
     setEditingEmployee(employee)
+    
+    // Kiểm tra xem title có trong danh sách predefined không
+    if (!predefinedTitles.includes(employee.title)) {
+      setShowCustomTitle(true)
+      setCustomTitle(employee.title)
+    } else {
+      setShowCustomTitle(false)
+      setCustomTitle("")
+    }
+    
     setShowAddEmployee(true)
   }
 
@@ -439,20 +466,72 @@ export function EmployeeManagement({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tước vị</label>
-                  <Select
-                    value={employeeForm.title}
-                    onValueChange={(value) => setEmployeeForm({ ...employeeForm, title: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Nhân sự">Nhân sự</SelectItem>
-                      <SelectItem value="Trưởng phòng">Trưởng phòng</SelectItem>
-                      <SelectItem value="Phó phòng">Phó phòng</SelectItem>
-                      <SelectItem value="Chuyên viên">Chuyên viên</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Select
+                      value={showCustomTitle ? "custom" : employeeForm.title}
+                      onValueChange={(value) => {
+                        if (value === "custom") {
+                          setShowCustomTitle(true)
+                          setCustomTitle(employeeForm.title)
+                        } else {
+                          setShowCustomTitle(false)
+                          setCustomTitle("")
+                          setEmployeeForm({ ...employeeForm, title: value })
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {predefinedTitles.map((title) => (
+                          <SelectItem key={title} value={title}>
+                            {title}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="custom">
+                          <span className="text-blue-600 font-medium">➕ Nhập tước vị khác...</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {showCustomTitle && (
+                      <div className="mt-2">
+                        <Input
+                          value={customTitle}
+                          onChange={(e) => setCustomTitle(e.target.value)}
+                          placeholder="Nhập tước vị tự do (VD: Giám đốc, Kỹ sư, v.v.)"
+                          disabled={isSubmitting}
+                          className="text-sm"
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setShowCustomTitle(false)
+                              setCustomTitle("")
+                            }}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              if (customTitle.trim()) {
+                                setEmployeeForm({ ...employeeForm, title: customTitle.trim() })
+                                setShowCustomTitle(false)
+                              }
+                            }}
+                          >
+                            Xác nhận
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
