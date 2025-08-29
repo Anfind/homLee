@@ -515,7 +515,7 @@ export function AttendanceTable({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả phòng ban</SelectItem>
+                <SelectItem value="all">Tất cả Khối/Phòng</SelectItem>
                 {departments.map((dept) => (
                   <SelectItem key={dept} value={dept}>
                     {dept}
