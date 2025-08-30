@@ -52,7 +52,7 @@ async function seedEmployees() {
     const employees = usersData.data.map(zkUser => ({
       _id: zkUser.userId.toString(), // Use userId as _id
       name: zkUser.name.trim(),
-      title: 'Nhân viên', // Default title
+      title: 'Chuyên viên', // Default title
       department: 'Chưa phân bổ', // Default department
       createdAt: new Date(),
       updatedAt: new Date()

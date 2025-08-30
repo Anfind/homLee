@@ -41,25 +41,36 @@ export async function POST(request: NextRequest) {
     // Process each employee from ZKTeco
     for (const zkEmployee of employees) {
       try {
-        const employeeData = {
-          _id: zkEmployee.userId, // deviceUserId làm primary key
-          name: zkEmployee.name.trim(),
-          title: 'Nhân sự', // Default title
-          department: 'Chưa phân bổ' // Default department, sẽ cập nhật sau
-        }
-
-        // Upsert employee (create if not exists, update if exists)
-        const existingEmployee = await Employee.findById(employeeData._id)
+        // Check if employee already exists
+        const existingEmployee = await Employee.findById(zkEmployee.userId)
         
         if (existingEmployee) {
-          // Update existing employee
-          await Employee.findByIdAndUpdate(employeeData._id, employeeData, {
-            runValidators: true
-          })
-          syncResults.updated++
+          // ✅ KHÔNG GHI ĐÈ - Chỉ update tên nếu khác biệt, giữ nguyên title và department
+          const newName = zkEmployee.name.trim()
+          if (existingEmployee.name !== newName) {
+            await Employee.findByIdAndUpdate(zkEmployee.userId, {
+              name: newName,
+              updatedAt: new Date()
+              // KHÔNG update title và department để bảo vệ dữ liệu đã chỉnh sửa
+            }, {
+              runValidators: true
+            })
+            console.log(`📝 Updated name for employee ${zkEmployee.userId}: "${existingEmployee.name}" → "${newName}"`)
+            syncResults.updated++
+          } else {
+            console.log(`✅ Employee ${zkEmployee.userId} (${existingEmployee.name}) already exists with correct name - skipping`)
+          }
         } else {
-          // Create new employee
-          await Employee.create(employeeData)
+          // ✅ CHỈ TẠO MỚI - Tạo nhân viên mới với thông tin mặc định
+          const newEmployeeData = {
+            _id: zkEmployee.userId,
+            name: zkEmployee.name.trim(),
+            title: 'Nhân sự', // Default title chỉ cho nhân viên mới
+            department: 'Chưa phân bổ' // Default department chỉ cho nhân viên mới
+          }
+          
+          await Employee.create(newEmployeeData)
+          console.log(`➕ Created new employee: ${zkEmployee.userId} - ${newEmployeeData.name}`)
           syncResults.created++
         }
 

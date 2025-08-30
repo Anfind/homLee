@@ -12,8 +12,8 @@ const roleMapping = {
     title: 'Phó Giám Đốc' 
   },
   0: { 
-    department: 'Nhân viên', 
-    title: 'Nhân viên' 
+    department: 'Chuyên viên', 
+    title: 'Chuyên viên' 
   }
 };
 
@@ -26,7 +26,7 @@ const defaultDepartments = [
   'Phòng Kỹ thuật',
   'Phòng Sản xuất',
   'Phòng Bảo vệ',
-  'Nhân viên'
+  'Chuyên viên'
 ];
 
 function getDepartmentByName(name) {
@@ -55,7 +55,7 @@ function getDepartmentByName(name) {
     return 'Phòng Bảo vệ';
   }
   
-  return 'Nhân viên'; // Default department
+  return 'Chuyên viên'; // Default department
 }
 
 function getTitleByRole(role, name) {
@@ -85,7 +85,7 @@ function getTitleByRole(role, name) {
     return 'Kế toán viên';
   }
   
-  return 'Nhân viên'; // Default title
+  return 'Chuyên viên'; // Default title
 }
 
 async function seedEmployeesFromZKTeco() {

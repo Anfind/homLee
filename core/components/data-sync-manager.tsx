@@ -131,11 +131,26 @@ export default function DataSyncManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
+          {/* ✅ CẢNH BÁO BẢO VỆ DỮ LIỆU */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-green-800">
+                <div className="font-medium mb-1">✅ An toàn với dữ liệu đã chỉnh sửa</div>
+                <div className="text-xs">
+                  • Chỉ thêm nhân viên mới từ ZKTeco<br/>
+                  • Không ghi đè title và department đã chỉnh sửa<br/>
+                  • Chỉ cập nhật tên nếu khác biệt
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button
             onClick={() => {
               console.log('🖱️ Employee sync button clicked, current state:', { isEmployeeSync })
               syncEmployees()
-            }} 
+            }}
             disabled={isEmployeeSync}
             className="w-full"
           >
@@ -147,7 +162,7 @@ export default function DataSyncManager() {
             ) : (
               <>
                 <Users className="mr-2 h-4 w-4" />
-                Đồng Bộ Nhân Sự
+                Đồng Bộ Nhân Sự (An toàn)
               </>
             )}
           </Button>

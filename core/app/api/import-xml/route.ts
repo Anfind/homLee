@@ -130,11 +130,11 @@ function parseTimeFromMultipleFormats(timeValue: any): string | null {
 
 /**
  * Clean employee ID by removing leading zeros if needed
- * Auto-create employee if not exists
- * Input: "00003" -> Output: "3"
+ * ✅ CHỈ TÌM NHÂN VIÊN ĐÃ TỒN TẠI - KHÔNG TỰ ĐỘNG TẠO MỚI
+ * Input: "00003" -> Output: "3" (nếu tồn tại)
  */
-async function ensureEmployeeExists(rawId: string, employeeName: string): Promise<string> {
-  if (!rawId) return ''
+async function findExistingEmployee(rawId: string, employeeName: string): Promise<string | null> {
+  if (!rawId) return null
   
   // Clean the ID first
   const cleanId = rawId.toString().trim()
@@ -142,6 +142,7 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
   // Try original ID first
   let employee = await Employee.findOne({ _id: cleanId })
   if (employee) {
+    console.log(`✅ Found employee with original ID: ${cleanId} - ${employee.name}`)
     return cleanId
   }
   
@@ -150,26 +151,14 @@ async function ensureEmployeeExists(rawId: string, employeeName: string): Promis
   if (numericId !== cleanId) {
     employee = await Employee.findOne({ _id: numericId })
     if (employee) {
+      console.log(`✅ Found employee with numeric ID: ${numericId} - ${employee.name}`)
       return numericId
     }
   }
   
-  // Auto-create employee if not exists
-  const finalId = numericId
-  const newEmployee = {
-    _id: finalId,
-    name: employeeName || `Nhân sự ${finalId}`,
-    title: 'Nhân sự',
-    department: 'Chưa phân loại'
-  }
-  
-  try {
-    await Employee.create(newEmployee)
-    return finalId
-  } catch (error) {
-    console.error(`❌ Failed to create employee ${finalId}:`, error)
-    return finalId // Return anyway to continue processing
-  }
+  // ✅ KHÔNG TỰ ĐỘNG TẠO - Trả về null nếu không tìm thấy
+  console.warn(`⚠️ Employee not found: ${rawId} (${employeeName}) - skipping this record`)
+  return null
 }
 
 export async function POST(request: NextRequest) {
@@ -233,16 +222,16 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Normalize employee ID and auto-create if needed
+        // ✅ CHỈ TÌM NHÂN VIÊN ĐÃ TỒN TẠI - KHÔNG TỰ ĐỘNG TẠO MỚI
         const rawEmployeeId = row['ID']?.toString().trim()
         const employeeName = row['Họ và Tên']?.toString().trim()
-        const employeeId = await ensureEmployeeExists(rawEmployeeId, employeeName)
+        const employeeId = await findExistingEmployee(rawEmployeeId, employeeName)
         
-        // Skip if still no valid employee ID (shouldn't happen now)
+        // ✅ BỎ QUA NẾU KHÔNG TÌM THẤY NHÂN VIÊN (KHÔNG TỰ ĐỘNG TẠO)
         if (!employeeId) {
           results.errors.push({
             row: i + 5,
-            error: `Không thể xử lý employee ID: ${rawEmployeeId}`,
+            error: `Nhân viên không tồn tại trong hệ thống: ID=${rawEmployeeId}, Tên=${employeeName}. Vui lòng thêm nhân viên trước khi import.`,
             data: row
           })
           continue
