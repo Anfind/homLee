@@ -45,21 +45,9 @@ export async function POST(request: NextRequest) {
         const existingEmployee = await Employee.findById(zkEmployee.userId)
         
         if (existingEmployee) {
-          // ✅ KHÔNG GHI ĐÈ - Chỉ update tên nếu khác biệt, giữ nguyên title và department
-          const newName = zkEmployee.name.trim()
-          if (existingEmployee.name !== newName) {
-            await Employee.findByIdAndUpdate(zkEmployee.userId, {
-              name: newName,
-              updatedAt: new Date()
-              // KHÔNG update title và department để bảo vệ dữ liệu đã chỉnh sửa
-            }, {
-              runValidators: true
-            })
-            console.log(`📝 Updated name for employee ${zkEmployee.userId}: "${existingEmployee.name}" → "${newName}"`)
-            syncResults.updated++
-          } else {
-            console.log(`✅ Employee ${zkEmployee.userId} (${existingEmployee.name}) already exists with correct name - skipping`)
-          }
+          // ✅ HOÀN TOÀN KHÔNG CẬP NHẬT - Bỏ qua nhân viên đã tồn tại
+          console.log(`✅ Employee ${zkEmployee.userId} (${existingEmployee.name}) already exists - skipping completely`)
+          // Không tăng syncResults.updated vì không có gì được cập nhật
         } else {
           // ✅ CHỈ TẠO MỚI - Tạo nhân viên mới với thông tin mặc định
           const newEmployeeData = {

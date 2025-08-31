@@ -136,11 +136,11 @@ export default function DataSyncManager() {
             <div className="flex items-start gap-2">
               <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-green-800">
-                <div className="font-medium mb-1">✅ An toàn với dữ liệu đã chỉnh sửa</div>
+                <div className="font-medium mb-1">✅ Hoàn toàn an toàn với dữ liệu đã chỉnh sửa</div>
                 <div className="text-xs">
                   • Chỉ thêm nhân viên mới từ ZKTeco<br/>
-                  • Không ghi đè title và department đã chỉnh sửa<br/>
-                  • Chỉ cập nhật tên nếu khác biệt
+                  • Không cập nhật gì với nhân viên đã tồn tại<br/>
+                  • Bảo vệ hoàn toàn tên, title và department đã sửa
                 </div>
               </div>
             </div>
