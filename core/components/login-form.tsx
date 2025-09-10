@@ -10,6 +10,7 @@ import { Eye, EyeOff, Lock, Shield, Building2, Info, User } from "lucide-react"
 
 export interface UserType {
   username: string
+  newUsername?: string // For username changes during updates
   password?: string // For display only, not used in API
   role: "admin" | "truongphong" | "department_manager"
   department?: string
@@ -124,8 +125,8 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     switch (role) {
       case "admin": return "Quản trị viên"
       case "truongphong": return "Trưởng phòng"
-      case "department_manager": return "Quản lý phòng ban"
-      default: return "Nhân viên"
+      case "department_manager": return "Quản lý khối"
+      default: return "Nhân sự"
     }
   }
 
@@ -145,11 +146,12 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             </div>
             <CardTitle className="text-3xl font-bold text-gray-900">Hệ thống điểm danh Lee Homes</CardTitle>
             <CardDescription className="text-gray-600 text-base">
-              Đăng nhập để quản lý chấm công nhân viên
+              Đăng nhập để quản lý điểm danh nhân sự
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Quick Access Info */}
+            {/* Quick Access Info - HIDDEN PER USER REQUEST */}
+            {/* 
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
               <div className="flex items-center gap-2 mb-3">
                 <Info className="w-5 h-5 text-blue-600" />
@@ -160,7 +162,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               </p>
             </div>
 
-            {/* Demo Accounts */}
+            Demo Accounts - HIDDEN PER USER REQUEST
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <User className="w-4 h-4" />
@@ -226,10 +228,11 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 ))}
               </div>
             </div>
+            */}
 
             {/* Manual Login Form */}
             <div className="border-t pt-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Hoặc đăng nhập thủ công</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Đăng nhập hệ thống</h3>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">

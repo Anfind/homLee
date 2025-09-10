@@ -2,9 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import font từ Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Utility classes cho tiếng Việt */
+  .text-vietnamese {
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+  }
+  
+  .text-vietnamese-heading {
+    line-height: 1.4;
+    letter-spacing: 0.005em;
   }
 }
 
@@ -86,5 +100,23 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', 'Segoe UI', 'Noto Sans', 'Roboto', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Cải thiện hiển thị dấu thanh tiếng Việt */
+  h1, h2, h3, h4, h5, h6, .font-semibold, .font-bold, .font-medium {
+    line-height: 1.4;
+    letter-spacing: 0.005em;
+  }
+  
+  /* Tối ưu cho các thành phần UI */
+  button, input, select, textarea {
+    font-family: inherit;
+    line-height: 1.5;
   }
 }

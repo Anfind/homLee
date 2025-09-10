@@ -127,7 +127,7 @@ export async function PUT(request: NextRequest) {
     await connectDB()
     
     const body = await request.json()
-    const { username, name, role, department, password } = body
+    const { username, newUsername, name, role, department, password } = body
     
     if (!username) {
       return NextResponse.json(
@@ -135,17 +135,59 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Find the user first
+    const existingUser = await User.findOne({ username })
+    if (!existingUser) {
+      return NextResponse.json(
+        { success: false, error: 'Không tìm thấy tài khoản' },
+        { status: 404 }
+      )
+    }
+
+    // If newUsername is provided, validate and check for conflicts
+    let finalUsername = username
+    if (newUsername && newUsername.trim() !== username) {
+      const trimmedNewUsername = newUsername.trim().toLowerCase()
+      
+      // Validate new username format
+      if (!/^[a-z0-9]{3,20}$/.test(trimmedNewUsername)) {
+        return NextResponse.json(
+          { success: false, error: 'Tên đăng nhập mới không hợp lệ (3-20 ký tự, chỉ chữ thường và số)' },
+          { status: 400 }
+        )
+      }
+
+      // Check if new username already exists
+      const duplicateUser = await User.findOne({ username: trimmedNewUsername })
+      if (duplicateUser) {
+        return NextResponse.json(
+          { success: false, error: 'Tên đăng nhập mới đã tồn tại' },
+          { status: 409 }
+        )
+      }
+
+      finalUsername = trimmedNewUsername
+    }
     
-    const updateData: any = { name, role }
+    const updateData: any = { 
+      username: finalUsername,
+      name, 
+      role 
+    }
+    
     if (role === 'truongphong' && department) {
       updateData.department = department
+    } else if (role !== 'truongphong') {
+      updateData.department = undefined
     }
+    
     if (password) {
       updateData.password = password // TODO: Hash password in production
     }
     
     const user = await User.findOneAndUpdate(
-      { username },
+      { username }, // Find by original username
       updateData,
       { new: true, runValidators: true }
     ).select('-password')

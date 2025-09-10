@@ -52,34 +52,34 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
     let morningPointsAwarded = false
     let afternoonPointsAwarded = false
 
-    // Kiểm tra giờ chấm công buổi sáng
+    // Kiểm tra giờ điểm danh buổi sáng
     if (morningCheckIn && !morningPointsAwarded) {
       const morningCheckInMinutes = timeToMinutes(morningCheckIn)
       for (const shift of daySettings.shifts) {
         const shiftStartMinutes = timeToMinutes(shift.startTime)
         const shiftEndMinutes = timeToMinutes(shift.endTime)
 
-        // Giả định: chấm công phải nằm trong khung giờ của ca để được tính điểm
+        // Giả định: điểm danh phải nằm trong khung giờ của ca để được tính điểm
         if (morningCheckInMinutes >= shiftStartMinutes && morningCheckInMinutes <= shiftEndMinutes) {
           points += shift.points
           morningPointsAwarded = true // Đánh dấu đã cộng điểm cho buổi sáng
-          break // Chỉ cộng điểm cho một ca duy nhất cho giờ chấm công buổi sáng
+          break // Chỉ cộng điểm cho một ca duy nhất cho giờ điểm danh buổi sáng
         }
       }
     }
 
-    // Kiểm tra giờ chấm công buổi chiều
+    // Kiểm tra giờ điểm danh buổi chiều
     if (afternoonCheckIn && !afternoonPointsAwarded) {
       const afternoonCheckInMinutes = timeToMinutes(afternoonCheckIn)
       for (const shift of daySettings.shifts) {
         const shiftStartMinutes = timeToMinutes(shift.startTime)
         const shiftEndMinutes = timeToMinutes(shift.endTime)
 
-        // Giả định: chấm công phải nằm trong khung giờ của ca để được tính điểm
+        // Giả định: điểm danh phải nằm trong khung giờ của ca để được tính điểm
         if (afternoonCheckInMinutes >= shiftStartMinutes && afternoonCheckInMinutes <= shiftEndMinutes) {
           points += shift.points
           afternoonPointsAwarded = true // Đánh dấu đã cộng điểm cho buổi chiều
-          break // Chỉ cộng điểm cho một ca duy nhất cho giờ chấm công buổi chiều
+          break // Chỉ cộng điểm cho một ca duy nhất cho giờ điểm danh buổi chiều
         }
       }
     }
@@ -92,7 +92,7 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
     if (name.includes("TP") || name.includes("Trưởng")) {
       return "Trưởng phòng"
     }
-    return "Nhân viên"
+    return "Nhân sự"
   }
 
   const parseXMLFile = async (
@@ -237,7 +237,7 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
       return
     }
 
-    // Nếu là trưởng phòng hoặc quản lý phòng ban, tự động sử dụng phòng của mình
+    // Nếu là trưởng phòng hoặc quản lý khối, tự động sử dụng phòng của mình
     if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
       await processFile(file, user.department)
     }
@@ -253,7 +253,7 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
       console.log(`✅ Import completed: ${employees.length} employees, ${records.length} attendance records`)
       onImport(records, employees)
       alert(
-        `Đã import thành công vào ${targetDepartment}:\n- ${employees.length} nhân viên\n- ${records.length} bản ghi chấm công`,
+        `Đã import thành công vào ${targetDepartment}:\n- ${employees.length} nhân sự\n- ${records.length} bản ghi điểm danh`,
       )
     } catch (error) {
       console.error("Error parsing XML:", error)
@@ -372,7 +372,7 @@ export function XMLImporter({ onImport, user, departments, checkInSettings }: XM
               </div>
               <div className="bg-blue-50 p-3 rounded-lg">
                 <p className="text-sm text-blue-700">
-                  <strong>Lưu ý:</strong> Tất cả nhân viên trong file XML này sẽ được gán vào phòng ban được chọn.
+                  <strong>Lưu ý:</strong> Tất cả nhân sự trong file XML này sẽ được gán vào phòng ban được chọn.
                 </p>
               </div>
               <div className="flex gap-2 justify-end">

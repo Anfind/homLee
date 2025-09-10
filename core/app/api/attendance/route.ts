@@ -182,13 +182,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/attendance - Update attendance record
+// PUT /api/attendance - Update attendance record (supports field-specific updates)
 export async function PUT(request: NextRequest) {
   try {
     await connectDB()
     
     const body = await request.json()
-    const { employeeId, date, morningCheckIn, afternoonCheckIn, points, shifts } = body
+    const { employeeId, date, field, value, morningCheckIn, afternoonCheckIn, points, shifts } = body
     
     if (!employeeId || !date) {
       return NextResponse.json(
@@ -196,19 +196,40 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       )
     }
-    
-    const record = await AttendanceRecord.findOneAndUpdate(
-      { employeeId, date },
-      { morningCheckIn, afternoonCheckIn, points, shifts },
-      { new: true, runValidators: true }
-    )
+
+    // Find existing record or create new one
+    let record = await AttendanceRecord.findOne({ employeeId, date })
     
     if (!record) {
-      return NextResponse.json(
-        { success: false, error: 'Attendance record not found' },
-        { status: 404 }
-      )
+      // Create new record with default values
+      record = new AttendanceRecord({
+        employeeId,
+        date,
+        morningCheckIn: undefined,
+        afternoonCheckIn: undefined,
+        points: 0,
+        shifts: []
+      })
     }
+
+    // Handle field-specific update (for inline editing)
+    if (field && value !== undefined) {
+      if (field === 'morning') {
+        record.morningCheckIn = value
+      } else if (field === 'afternoon') {
+        record.afternoonCheckIn = value
+      } else if (field === 'points') {
+        record.points = Number(value)
+      }
+    } else {
+      // Handle full record update (for backward compatibility)
+      if (morningCheckIn !== undefined) record.morningCheckIn = morningCheckIn
+      if (afternoonCheckIn !== undefined) record.afternoonCheckIn = afternoonCheckIn
+      if (points !== undefined) record.points = points
+      if (shifts !== undefined) record.shifts = shifts
+    }
+
+    await record.save()
     
     return NextResponse.json({
       success: true,

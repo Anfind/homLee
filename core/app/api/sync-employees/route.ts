@@ -41,25 +41,24 @@ export async function POST(request: NextRequest) {
     // Process each employee from ZKTeco
     for (const zkEmployee of employees) {
       try {
-        const employeeData = {
-          _id: zkEmployee.userId, // deviceUserId làm primary key
-          name: zkEmployee.name.trim(),
-          title: 'Nhân viên', // Default title
-          department: 'Chưa phân bổ' // Default department, sẽ cập nhật sau
-        }
-
-        // Upsert employee (create if not exists, update if exists)
-        const existingEmployee = await Employee.findById(employeeData._id)
+        // Check if employee already exists
+        const existingEmployee = await Employee.findById(zkEmployee.userId)
         
         if (existingEmployee) {
-          // Update existing employee
-          await Employee.findByIdAndUpdate(employeeData._id, employeeData, {
-            runValidators: true
-          })
-          syncResults.updated++
+          // ✅ HOÀN TOÀN KHÔNG CẬP NHẬT - Bỏ qua nhân viên đã tồn tại
+          console.log(`✅ Employee ${zkEmployee.userId} (${existingEmployee.name}) already exists - skipping completely`)
+          // Không tăng syncResults.updated vì không có gì được cập nhật
         } else {
-          // Create new employee
-          await Employee.create(employeeData)
+          // ✅ CHỈ TẠO MỚI - Tạo nhân viên mới với thông tin mặc định
+          const newEmployeeData = {
+            _id: zkEmployee.userId,
+            name: zkEmployee.name.trim(),
+            title: 'Nhân sự', // Default title chỉ cho nhân viên mới
+            department: 'Chưa phân bổ' // Default department chỉ cho nhân viên mới
+          }
+          
+          await Employee.create(newEmployeeData)
+          console.log(`➕ Created new employee: ${zkEmployee.userId} - ${newEmployeeData.name}`)
           syncResults.created++
         }
 
@@ -90,7 +89,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: false,
-      message: 'Lỗi đồng bộ nhân viên',
+      message: 'Lỗi đồng bộ nhân sự',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }

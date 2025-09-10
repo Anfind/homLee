@@ -1,5 +1,5 @@
 /**
- * Attendance Sync Module - Đồng bộ dữ liệu chấm công từ ZKTeco
+ * Attendance Sync Module - Đồng bộ dữ liệu điểm danh từ ZKTeco
  */
 
 import { logAutoSync } from './sync-logger';
@@ -12,7 +12,7 @@ interface SyncResponse {
 }
 
 /**
- * Đồng bộ dữ liệu chấm công từ máy ZKTeco
+ * Đồng bộ dữ liệu điểm danh từ máy ZKTeco
  */
 export async function syncAttendanceData(): Promise<SyncResponse> {
   try {

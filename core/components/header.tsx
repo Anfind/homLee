@@ -19,8 +19,8 @@ export function Header({ user, onLogout, checkInSettings }: HeaderProps) {
     switch (role) {
       case "admin": return "Quản trị viên"
       case "truongphong": return "Trưởng phòng"
-      case "department_manager": return "Quản lý phòng ban"
-      default: return "Nhân viên"
+      case "department_manager": return "Quản lý Khối/Phòng"
+      default: return "Nhân sự"
     }
   }
 
@@ -76,7 +76,7 @@ export function Header({ user, onLogout, checkInSettings }: HeaderProps) {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Hệ thống điểm danh Lee Homes</h1>
-                <p className="text-sm text-gray-500">Quản lý điểm danh nhân viên</p>
+                <p className="text-sm text-gray-500">Quản lý điểm danh nhân sự</p>
               </div>
             </div>
             

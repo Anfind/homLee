@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * API Endpoint: /api/auto-sync
- * Tự động đồng bộ dữ liệu chấm công từ máy ZKTeco (chạy background)
+ * Tự động đồng bộ dữ liệu điểm danh từ máy ZKTeco (chạy background)
  */
 
 export async function POST(request: NextRequest) {

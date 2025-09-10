@@ -1,7 +1,7 @@
 import { CheckInSettings, Shift } from '@/app/page'
 
 /**
- * Utility để xử lý thời gian và tính điểm chấm công
+ * Utility để xử lý thời gian và tính điểm điểm danh
  */
 
 // Default check-in settings (EXACT company schedule)
@@ -53,7 +53,7 @@ export const getDefaultCheckInSettings = (): CheckInSettings => {
 }
 
 /**
- * Convert UTC timestamp từ máy chấm công sang thời gian VN (UTC+7)
+ * Convert UTC timestamp từ máy điểm danh sang thời gian VN (UTC+7)
  * QUAN TRỌNG: Kiểm tra xem hệ thống đã ở VN timezone chưa
  */
 export function convertToVietnamTime(isoString: string): Date {
@@ -275,7 +275,7 @@ export function categorizeCheckIns(
 }
 
 /**
- * Main function để process attendance record từ máy chấm công
+ * Main function để process attendance record từ máy điểm danh
  */
 export function processZKAttendanceRecord(
   recordTime: string,

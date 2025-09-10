@@ -119,12 +119,12 @@ export function CheckInSettingsManagement({ currentSettings, onSave, onClose }: 
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cấu hình giờ chấm công và ca làm việc</DialogTitle>
+          <DialogTitle>Cấu hình khung giờ điểm danh và ca làm việc</DialogTitle>
         </DialogHeader>
         <div className="grid gap-6 py-4">
           <p className="text-sm text-gray-600">
             Tại đây bạn có thể định nghĩa các ca làm việc (giờ bắt đầu, giờ kết thúc và điểm) cho từng ngày trong tuần.
-            Hệ thống sẽ dựa vào các ca này để tính điểm chấm công.
+            Hệ thống sẽ dựa vào các ca này để tính điểm điểm danh.
           </p>
           {dayNames.map((dayName, dayIndex) => (
             <div key={dayIndex} className="border rounded-md p-4 bg-gray-50">

@@ -52,7 +52,7 @@ export function EmployeeManagement({
   const [employeeForm, setEmployeeForm] = useState({
     id: "",
     name: "",
-    title: "Nhân viên",
+    title: "Nhân sự",
     department: "",
   })
 
@@ -67,6 +67,24 @@ export function EmployeeManagement({
 
   const [showPassword, setShowPassword] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showCustomTitle, setShowCustomTitle] = useState(false)
+  const [customTitle, setCustomTitle] = useState("")
+
+  // Danh sách chức vụ có sẵn
+  const predefinedTitles = [
+    "Nhân sự",
+    "Trưởng phòng", 
+    "Phó phòng",
+    "Chuyên viên",
+    "Giám đốc Khối",
+    "Đầu chủ",
+    "Đầu khách",
+    // "Kế toán",
+    // "Thư ký",
+    // "Bảo vệ",
+    // "Lao công",
+    // "Tài xế"
+  ]
 
   const departmentNames = departments.map((d) => d.name)
 
@@ -74,7 +92,10 @@ export function EmployeeManagement({
   const filteredEmployees = useMemo(() => {
     let filtered = currentUser.role === "admin" 
       ? employees 
-      : employees.filter((emp) => emp.department === currentUser.department)
+      : employees.filter((emp) => 
+          emp.department && currentUser.department && 
+          emp.department.toLowerCase().trim() === currentUser.department.toLowerCase().trim()
+        )
     
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
@@ -92,17 +113,24 @@ export function EmployeeManagement({
   const filteredUsers =
     currentUser.role === "admin"
       ? users
-      : users.filter((user) => user.department === currentUser.department || user.role === "admin")
+      : users.filter((user) => 
+          user.role === "admin" || (
+            user.department && currentUser.department && 
+            user.department.toLowerCase().trim() === currentUser.department.toLowerCase().trim()
+          )
+        )
 
   const resetEmployeeForm = () => {
     setEmployeeForm({
       id: "",
       name: "",
-      title: "Nhân viên",
+      title: "Nhân sự",
       department: currentUser.role === "truongphong" ? currentUser.department || "" : "",
     })
     setEditingEmployee(null)
     setIsSubmitting(false)
+    setShowCustomTitle(false)
+    setCustomTitle("")
   }
 
   const resetUserForm = () => {
@@ -127,20 +155,20 @@ export function EmployeeManagement({
 
     // For truongphong, only allow adding to their department
     if (currentUser.role === "truongphong" && employeeForm.department !== currentUser.department) {
-      alert("Bạn chỉ có thể thêm nhân viên vào phòng ban của mình")
+      alert("Bạn chỉ có thể thêm nhân sự vào phòng ban của mình")
       return
     }
 
     // Check duplicate ID
     if (!editingEmployee && employees.some((emp) => emp.id === employeeForm.id)) {
-      alert("ID nhân viên đã tồn tại")
+      alert("ID nhân sự đã tồn tại")
       return
     }
 
     const employee: Employee = {
       id: employeeForm.id,
       name: employeeForm.name,
-      title: employeeForm.title,
+      title: showCustomTitle && customTitle.trim() ? customTitle.trim() : employeeForm.title,
       department: employeeForm.department,
     }
 
@@ -170,7 +198,7 @@ export function EmployeeManagement({
     }
 
     if ((userForm.role === "truongphong" || userForm.role === "department_manager") && !userForm.department) {
-      alert("Vui lòng chọn phòng ban cho trưởng phòng/quản lý phòng ban")
+      alert("Vui lòng chọn phòng ban cho trưởng phòng/quản lý khối")
       return
     }
 
@@ -180,14 +208,35 @@ export function EmployeeManagement({
       return
     }
 
-    // Check duplicate username (client-side check)
-    if (!editingUser && users.some((user) => user.username === userForm.username.toLowerCase().trim())) {
-      alert("Tên đăng nhập đã tồn tại")
+    const trimmedUsername = userForm.username.toLowerCase().trim()
+
+    // Protect admin account from username changes
+    if (editingUser && editingUser.username === "admin" && trimmedUsername !== "admin") {
+      alert("Không thể thay đổi tên đăng nhập của tài khoản admin")
       return
     }
 
+    // Check duplicate username (client-side check)
+    if (editingUser) {
+      // When editing, allow same username OR check if new username conflicts
+      const existingUserWithSameUsername = users.find(user => 
+        user.username === trimmedUsername && user.username !== editingUser.username
+      )
+      if (existingUserWithSameUsername) {
+        alert("Tên đăng nhập mới đã tồn tại")
+        return
+      }
+    } else {
+      // When creating new user, check for any conflicts
+      if (users.some((user) => user.username === trimmedUsername)) {
+        alert("Tên đăng nhập đã tồn tại")
+        return
+      }
+    }
+
     const user: User = {
-      username: userForm.username.toLowerCase().trim(),
+      username: editingUser?.username || trimmedUsername, // Original username for lookup
+      newUsername: editingUser && trimmedUsername !== editingUser.username ? trimmedUsername : undefined, // New username if changed
       password: userForm.password,
       name: userForm.name.trim(),
       role: userForm.role,
@@ -199,7 +248,9 @@ export function EmployeeManagement({
       if (editingUser) {
         await onUserUpdate(user)
       } else {
-        await onUserAdd(user)
+        // For new users, use the trimmed username directly
+        const newUser = { ...user, username: trimmedUsername, newUsername: undefined }
+        await onUserAdd(newUser)
       }
 
       resetUserForm()
@@ -214,6 +265,16 @@ export function EmployeeManagement({
   const handleEditEmployee = (employee: Employee) => {
     setEmployeeForm(employee)
     setEditingEmployee(employee)
+    
+    // Kiểm tra xem title có trong danh sách predefined không
+    if (!predefinedTitles.includes(employee.title)) {
+      setShowCustomTitle(true)
+      setCustomTitle(employee.title)
+    } else {
+      setShowCustomTitle(false)
+      setCustomTitle("")
+    }
+    
     setShowAddEmployee(true)
   }
 
@@ -230,7 +291,7 @@ export function EmployeeManagement({
   }
 
   const handleDeleteEmployee = (employeeId: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa nhân viên này? Tất cả dữ liệu chấm công sẽ bị xóa.")) {
+    if (confirm("Bạn có chắc chắn muốn xóa nhân sự này? Tất cả dữ liệu điểm danh sẽ bị xóa.")) {
       onEmployeeDelete(employeeId)
     }
   }
@@ -257,23 +318,23 @@ export function EmployeeManagement({
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="employees">Nhân viên ({filteredEmployees.length})</TabsTrigger>
+            <TabsTrigger value="employees">Nhân sự ({filteredEmployees.length})</TabsTrigger>
             <TabsTrigger value="users">Tài khoản ({filteredUsers.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="employees" className="space-y-4">
             <div className="flex justify-between items-center gap-4">
-              <h3 className="text-lg font-semibold">Danh sách nhân viên</h3>
+              <h3 className="text-lg font-semibold">Danh sách nhân sự</h3>
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="Tìm kiếm nhân viên..."
+                  placeholder="Tìm kiếm nhân sự..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-64"
                 />
                 <Button onClick={() => setShowAddEmployee(true)} className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4" />
-                  Thêm nhân viên
+                  Thêm nhân sự
                 </Button>
               </div>
             </div>
@@ -281,7 +342,7 @@ export function EmployeeManagement({
             <div className="grid gap-4 max-h-96 overflow-y-auto">
               {filteredEmployees.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  {searchTerm ? "Không tìm thấy nhân viên nào" : "Chưa có nhân viên nào"}
+                  {searchTerm ? "Không tìm thấy nhân sự nào" : "Chưa có nhân sự nào"}
                 </div>
               ) : (
                 filteredEmployees.map((employee) => (
@@ -348,7 +409,7 @@ export function EmployeeManagement({
                           <div className="text-sm text-gray-600 flex items-center gap-2">
                             <Badge variant={user.role === "admin" ? "default" : "secondary"}>
                               {user.role === "admin" ? "Quản trị viên" : 
-                               user.role === "department_manager" ? "Quản lý phòng ban" : "Trưởng phòng"}
+                               user.role === "department_manager" ? "Quản lý khối" : "Trưởng phòng"}
                             </Badge>
                             {user.department && <span>{user.department}</span>}
                           </div>
@@ -382,11 +443,11 @@ export function EmployeeManagement({
           <Dialog open={true} onOpenChange={() => setShowAddEmployee(false)}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingEmployee ? "Sửa thông tin nhân viên" : "Thêm nhân viên mới"}</DialogTitle>
+                <DialogTitle>{editingEmployee ? "Sửa thông tin nhân sự" : "Thêm nhân sự mới"}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleEmployeeSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ID nhân viên</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ID nhân sự</label>
                   <Input
                     value={employeeForm.id}
                     onChange={(e) => setEmployeeForm({ ...employeeForm, id: e.target.value.trim().toUpperCase() })}
@@ -408,20 +469,72 @@ export function EmployeeManagement({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tước vị</label>
-                  <Select
-                    value={employeeForm.title}
-                    onValueChange={(value) => setEmployeeForm({ ...employeeForm, title: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Nhân viên">Nhân viên</SelectItem>
-                      <SelectItem value="Trưởng phòng">Trưởng phòng</SelectItem>
-                      <SelectItem value="Phó phòng">Phó phòng</SelectItem>
-                      <SelectItem value="Chuyên viên">Chuyên viên</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Select
+                      value={showCustomTitle ? "custom" : employeeForm.title}
+                      onValueChange={(value) => {
+                        if (value === "custom") {
+                          setShowCustomTitle(true)
+                          setCustomTitle(employeeForm.title)
+                        } else {
+                          setShowCustomTitle(false)
+                          setCustomTitle("")
+                          setEmployeeForm({ ...employeeForm, title: value })
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {predefinedTitles.map((title) => (
+                          <SelectItem key={title} value={title}>
+                            {title}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="custom">
+                          <span className="text-blue-600 font-medium">➕ Nhập tước vị khác...</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {showCustomTitle && (
+                      <div className="mt-2">
+                        <Input
+                          value={customTitle}
+                          onChange={(e) => setCustomTitle(e.target.value)}
+                          placeholder="Nhập tước vị tự do (VD: Giám đốc, Kỹ sư, v.v.)"
+                          disabled={isSubmitting}
+                          className="text-sm"
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setShowCustomTitle(false)
+                              setCustomTitle("")
+                            }}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              if (customTitle.trim()) {
+                                setEmployeeForm({ ...employeeForm, title: customTitle.trim() })
+                                setShowCustomTitle(false)
+                              }
+                            }}
+                          >
+                            Xác nhận
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
@@ -463,14 +576,31 @@ export function EmployeeManagement({
               </DialogHeader>
               <form onSubmit={handleUserSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên đăng nhập</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên đăng nhập
+                    {editingUser && editingUser.username !== "admin" && (
+                      <span className="text-xs text-amber-600 ml-2">
+                        (có thể sửa đổi)
+                      </span>
+                    )}
+                  </label>
                   <Input
                     value={userForm.username}
                     onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
                     placeholder="Nhập tên đăng nhập"
-                    disabled={!!editingUser}
+                    disabled={editingUser?.username === "admin"}
                     required
                   />
+                  {editingUser && editingUser.username !== "admin" && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      ⚠️ Thay đổi tên đăng nhập sẽ ảnh hưởng đến việc đăng nhập của người dùng
+                    </p>
+                  )}
+                  {editingUser?.username === "admin" && (
+                    <p className="text-xs text-red-500 mt-1">
+                      🔒 Không thể thay đổi tên đăng nhập của tài khoản admin
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
@@ -513,7 +643,7 @@ export function EmployeeManagement({
                     <SelectContent>
                       <SelectItem value="admin">Quản trị viên</SelectItem>
                       <SelectItem value="truongphong">Trưởng phòng</SelectItem>
-                      <SelectItem value="department_manager">Quản lý phòng ban</SelectItem>
+                      <SelectItem value="department_manager">Quản lý khối</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -51,7 +51,7 @@ export async function GET() {
     console.error('Get check-in settings error:', error)
     return NextResponse.json({
       success: false,
-      message: 'Lỗi khi lấy cấu hình chấm công',
+      message: 'Lỗi khi lấy cấu hình điểm danh',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     console.error('Update check-in settings error:', error)
     return NextResponse.json({
       success: false,
-      message: 'Lỗi khi cập nhật cấu hình chấm công',
+      message: 'Lỗi khi cập nhật cấu hình điểm danh',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
@@ -121,14 +121,14 @@ export async function DELETE() {
     
     return NextResponse.json({
       success: true,
-      message: 'Reset cấu hình chấm công về mặc định thành công'
+      message: 'Reset cấu hình điểm danh về mặc định thành công'
     })
 
   } catch (error) {
     console.error('Reset check-in settings error:', error)
     return NextResponse.json({
       success: false,
-      message: 'Lỗi khi reset cấu hình chấm công',
+      message: 'Lỗi khi reset cấu hình điểm danh',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }

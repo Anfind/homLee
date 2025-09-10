@@ -387,18 +387,50 @@ export default function Home() {
     }
   }, [])
 
+  // Function để refresh attendance data
+  const refreshAttendanceData = async () => {
+    try {
+      setIsLoadingAttendance(true)
+      
+      // Load ALL attendance records from MongoDB for the selected month (no pagination)
+      console.log(`🔄 Refreshing attendance records for month: ${selectedMonth}`)
+      const attendanceResponse = await fetch(`/api/attendance?month=${selectedMonth}`)
+      
+      if (attendanceResponse.ok) {
+        const attendanceResult = await attendanceResponse.json()
+        if (attendanceResult.success) {
+          setAttendanceRecords(attendanceResult.data)
+          console.log(`✅ Refreshed ${attendanceResult.data.length} attendance records`)
+        }
+      }
+      
+      // Also refresh bonus points
+      const bonusPointsResponse = await fetch(`/api/bonus-points?month=${selectedMonth}`)
+      if (bonusPointsResponse.ok) {
+        const bonusPointsResult = await bonusPointsResponse.json()
+        if (bonusPointsResult.success) {
+          setBonusPoints(bonusPointsResult.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing attendance data:', error)
+    } finally {
+      setIsLoadingAttendance(false)
+    }
+  }
+
   const handleXMLImport = (records: AttendanceRecord[], newEmployees: Employee[]) => {
-    // Cập nhật danh sách nhân viên (kiểm tra trùng)
+    // Cập nhật danh sách nhân sự (kiểm tra trùng)
     setEmployees((prevEmployees) => {
       const updatedEmployees = [...prevEmployees]
 
       newEmployees.forEach((newEmp) => {
         const existingIndex = updatedEmployees.findIndex((emp) => emp.id === newEmp.id)
         if (existingIndex >= 0) {
-          // Cập nhật thông tin nhân viên hiện có
+          // Cập nhật thông tin nhân sự hiện có
           updatedEmployees[existingIndex] = { ...updatedEmployees[existingIndex], ...newEmp }
         } else {
-          // Thêm nhân viên mới
+          // Thêm nhân sự mới
           updatedEmployees.push(newEmp)
         }
       })
@@ -406,7 +438,7 @@ export default function Home() {
       return updatedEmployees
     })
 
-    // Cập nhật bản ghi chấm công
+    // Cập nhật bản ghi điểm danh
     setAttendanceRecords((prev) => {
       const newRecords = [...prev]
       records.forEach((record) => {
@@ -423,6 +455,10 @@ export default function Home() {
 
   const handleBonusPointUpdate = async (employeeId: string, date: string, points: number) => {
     if (!currentUser) return
+    if (currentUser.role !== "admin") {
+      console.warn('Chỉ admin mới được phép chỉnh sửa điểm')
+      return
+    }
 
     try {
       const response = await fetch('/api/bonus-points', {
@@ -457,6 +493,10 @@ export default function Home() {
   // New handler for custom daily values
   const handleCustomValueUpdate = async (employeeId: string, date: string, columnKey: string, value: string) => {
     if (!currentUser) return
+    if (currentUser.role !== "admin") {
+      console.warn('Chỉ admin mới được phép chỉnh sửa điểm')
+      return
+    }
 
     try {
       const response = await fetch('/api/custom-daily-values', {
@@ -508,13 +548,13 @@ export default function Home() {
         // Rollback optimistic update on error
         setEmployees(prev => prev.filter(emp => emp.id !== employee.id))
         console.error('Failed to add employee:', result.error)
-        alert(`Lỗi thêm nhân viên: ${result.error}`)
+        alert(`Lỗi thêm nhân sự: ${result.error}`)
       }
     } catch (error) {
       // Rollback optimistic update on error
       setEmployees(prev => prev.filter(emp => emp.id !== employee.id))
       console.error('Error adding employee:', error)
-      alert('Lỗi kết nối khi thêm nhân viên')
+      alert('Lỗi kết nối khi thêm nhân sự')
     }
   }
 
@@ -543,7 +583,7 @@ export default function Home() {
           setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? originalEmployee : emp))
         }
         console.error('Failed to update employee:', result.error)
-        alert(`Lỗi cập nhật nhân viên: ${result.error}`)
+        alert(`Lỗi cập nhật nhân sự: ${result.error}`)
       }
     } catch (error) {
       // Rollback optimistic update on error
@@ -552,7 +592,7 @@ export default function Home() {
         setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? originalEmployee : emp))
       }
       console.error('Error updating employee:', error)
-      alert('Lỗi kết nối khi cập nhật nhân viên')
+      alert('Lỗi kết nối khi cập nhật nhân sự')
     }
   }
 
@@ -635,7 +675,9 @@ export default function Home() {
       const originalUser = users.find(u => u.username === updatedUser.username)
       
       // Optimistic update: Update user in state immediately
-      setUsers(prev => prev.map(u => u.username === updatedUser.username ? updatedUser : u))
+      const finalUsername = updatedUser.newUsername || updatedUser.username
+      const optimisticUser = { ...updatedUser, username: finalUsername, newUsername: undefined }
+      setUsers(prev => prev.map(u => u.username === updatedUser.username ? optimisticUser : u))
       
       const response = await fetch('/api/users', {
         method: 'PUT',
@@ -646,12 +688,18 @@ export default function Home() {
       const result = await response.json()
       if (result.success) {
         // Update with actual data from server
-        setUsers(prev => prev.map(u => u.username === updatedUser.username ? result.data : u))
-        console.log(`✅ Updated user: ${updatedUser.username}`)
+        setUsers(prev => prev.map(u => 
+          u.username === finalUsername ? result.data : u
+        ))
+        console.log(`✅ Updated user: ${updatedUser.username}${updatedUser.newUsername ? ` → ${updatedUser.newUsername}` : ''}`)
+        
+        if (updatedUser.newUsername) {
+          alert(`✅ Đã cập nhật tài khoản thành công!\n\n📝 Tên đăng nhập: ${updatedUser.username} → ${updatedUser.newUsername}\n👤 Tên hiển thị: ${updatedUser.name}\n🏢 Vai trò: ${updatedUser.role}`)
+        }
       } else {
         // Rollback optimistic update on error
         if (originalUser) {
-          setUsers(prev => prev.map(u => u.username === updatedUser.username ? originalUser : u))
+          setUsers(prev => prev.map(u => u.username === finalUsername ? originalUser : u))
         }
         console.error('Failed to update user:', result.error)
         alert(`Lỗi cập nhật tài khoản: ${result.error}`)
@@ -660,7 +708,7 @@ export default function Home() {
       // Rollback optimistic update on error
       const originalUser = users.find(u => u.username === updatedUser.username)
       if (originalUser) {
-        setUsers(prev => prev.map(u => u.username === updatedUser.username ? originalUser : u))
+        setUsers(prev => prev.map(u => u.username === (updatedUser.newUsername || updatedUser.username) ? originalUser : u))
       }
       console.error('Error updating user:', error)
       alert('Lỗi kết nối khi cập nhật tài khoản')
@@ -714,6 +762,48 @@ export default function Home() {
 
       const result = await response.json()
       if (result.success) {
+        // Auto-create user account for the new department
+        const departmentName = department.name.trim()
+        const username = departmentName.toLowerCase()
+          .replace(/\s+/g, '') // Remove spaces
+          .replace(/[^a-z0-9]/g, '') // Remove special characters
+          .substring(0, 20) // Limit to 20 characters
+        
+        const defaultPassword = `${username}123` // Default password pattern
+        
+        try {
+          const userResponse = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: username,
+              password: defaultPassword,
+              name: `Quản lý ${departmentName}`,
+              role: 'truongphong',
+              department: departmentName
+            })
+          })
+
+          const userResult = await userResponse.json()
+          if (userResult.success) {
+            console.log(`✅ Auto-created user account: ${username} for department: ${departmentName}`)
+            alert(`🎉 Đã tạo phòng ban "${departmentName}" và tài khoản quản lý:\n\n👤 Tên đăng nhập: ${username}\n🔑 Mật khẩu: ${defaultPassword}\n\n⚠️ Hãy thông báo cho trưởng phòng đổi mật khẩu sau lần đăng nhập đầu tiên!`)
+            
+            // Reload users
+            const usersResponse = await fetch('/api/users')
+            const usersResult = await usersResponse.json()
+            if (usersResult.success) {
+              setUsers(usersResult.data)
+            }
+          } else {
+            console.warn('Failed to auto-create user:', userResult.error)
+            alert(`⚠️ Đã tạo phòng ban "${departmentName}" thành công nhưng không thể tự động tạo tài khoản quản lý.\n\nLỗi: ${userResult.error}\n\nBạn có thể tạo tài khoản thủ công trong mục "Quản lý nhân sự".`)
+          }
+        } catch (userError) {
+          console.warn('Error auto-creating user:', userError)
+          alert(`⚠️ Đã tạo phòng ban "${departmentName}" thành công nhưng không thể tự động tạo tài khoản quản lý.\n\nBạn có thể tạo tài khoản thủ công trong mục "Quản lý nhân sự".`)
+        }
+
         // Reload departments
         const departmentsResponse = await fetch('/api/departments')
         const departmentsResult = await departmentsResponse.json()
@@ -723,38 +813,132 @@ export default function Home() {
         }
       } else {
         console.error('Failed to add department:', result.message)
+        alert(`❌ Lỗi tạo phòng ban: ${result.message}`)
       }
     } catch (error) {
       console.error('Error adding department:', error)
+      alert('❌ Lỗi kết nối khi tạo phòng ban')
     }
   }
 
   const handleDepartmentUpdate = async (updatedDepartment: Department) => {
     try {
+      // First, get the original department name before updating
+      const originalDepartment = departments.find(d => d.id === updatedDepartment.id)
+      const originalName = originalDepartment?.name
+      const newName = updatedDepartment.name.trim()
+
+      if (!originalName) {
+        console.error('Cannot find original department')
+        return
+      }
+
+      // Update department
       const response = await fetch('/api/departments', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: updatedDepartment.id,
-          name: updatedDepartment.name,
+          name: newName,
           isActive: true
         })
       })
 
       const result = await response.json()
       if (result.success) {
-        // Reload departments
+        console.log(`✅ Updated department: ${originalName} → ${newName}`)
+
+        // Auto-update all employees in this department
+        const employeesInDepartment = employees.filter(emp => 
+          emp.department && originalName && 
+          emp.department.toLowerCase().trim() === originalName.toLowerCase().trim()
+        )
+
+        if (employeesInDepartment.length > 0) {
+          console.log(`🔄 Updating ${employeesInDepartment.length} employees to new department name...`)
+          
+          const employeeUpdatePromises = employeesInDepartment.map(async (emp) => {
+            const updatedEmployee = { ...emp, department: newName }
+            const empResponse = await fetch('/api/employees', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedEmployee)
+            })
+            const empResult = await empResponse.json()
+            if (empResult.success) {
+              console.log(`  ✅ Updated employee: ${emp.name}`)
+            } else {
+              console.warn(`  ⚠️ Failed to update employee: ${emp.name}`)
+            }
+            return empResult
+          })
+
+          await Promise.all(employeeUpdatePromises)
+        }
+
+        // Auto-update all users in this department
+        const usersInDepartment = users.filter(user => 
+          user.department && originalName && 
+          user.department.toLowerCase().trim() === originalName.toLowerCase().trim()
+        )
+
+        if (usersInDepartment.length > 0) {
+          console.log(`🔄 Updating ${usersInDepartment.length} users to new department name...`)
+          
+          const userUpdatePromises = usersInDepartment.map(async (user) => {
+            const updatedUser = { ...user, department: newName }
+            const userResponse = await fetch('/api/users', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedUser)
+            })
+            const userResult = await userResponse.json()
+            if (userResult.success) {
+              console.log(`  ✅ Updated user: ${user.username}`)
+            } else {
+              console.warn(`  ⚠️ Failed to update user: ${user.username}`)
+            }
+            return userResult
+          })
+
+          await Promise.all(userUpdatePromises)
+        }
+
+        // Reload all related data
         const departmentsResponse = await fetch('/api/departments')
         const departmentsResult = await departmentsResponse.json()
         if (departmentsResult.success) {
           setDepartments(departmentsResult.data)
-          console.log(`✅ Updated department: ${updatedDepartment.name}`)
         }
+
+        const employeesResponse = await fetch('/api/employees')
+        const employeesResult = await employeesResponse.json()
+        if (employeesResult.success) {
+          setEmployees(employeesResult.data)
+        }
+
+        const usersResponse = await fetch('/api/users')
+        const usersResult = await usersResponse.json()
+        if (usersResult.success) {
+          setUsers(usersResult.data)
+        }
+
+        // Show success message
+        const totalUpdated = employeesInDepartment.length + usersInDepartment.length
+        if (totalUpdated > 0) {
+          alert(`🎉 Đã cập nhật phòng ban "${originalName}" → "${newName}"\n\n📊 Tự động cập nhật:\n• ${employeesInDepartment.length} nhân sự\n• ${usersInDepartment.length} tài khoản\n\n✅ Tất cả dữ liệu đã được đồng bộ!`)
+        } else {
+          alert(`✅ Đã cập nhật tên phòng ban: "${originalName}" → "${newName}"`)
+        }
+
+        console.log(`🎯 Department update completed: ${totalUpdated} records updated`)
       } else {
         console.error('Failed to update department:', result.message)
+        alert(`❌ Lỗi cập nhật phòng ban: ${result.message}`)
       }
     } catch (error) {
       console.error('Error updating department:', error)
+      alert('❌ Lỗi kết nối khi cập nhật phòng ban')
     }
   }
 
@@ -878,7 +1062,7 @@ export default function Home() {
                     Chào mừng <span className="font-semibold text-blue-600">{currentUser.name}</span> 
                     <span className="text-sm bg-gray-100 px-2 py-1 rounded-full ml-2">
                       {currentUser.role === "admin" ? "Quản trị viên" : 
-                       currentUser.role === "truongphong" ? "Trưởng phòng" : "Nhân viên"}
+                       currentUser.role === "truongphong" ? "Trưởng phòng" : "Nhân sự"}
                     </span>
                   </p>
                 </div>
@@ -911,7 +1095,7 @@ export default function Home() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-blue-700">
-                      {currentUser.role === "admin" ? "Tổng nhân viên" : "Nhân viên phòng"}
+                      {currentUser.role === "admin" ? "Tổng nhân sự" : "Nhân sự phòng"}
                     </p>
                     <p className="text-xs text-blue-600">{currentUser.role === "admin" ? "Toàn công ty" : currentUser.department}</p>
                   </div>
@@ -919,7 +1103,7 @@ export default function Home() {
                 <p className="text-3xl font-bold text-blue-900">{totalEmployees}</p>
                 {employees.length > 0 && (
                   <p className="text-xs text-blue-500 mt-1">
-                    📊 MongoDB: {employees.length} nhân viên
+                    📊 MongoDB: {employees.length} nhân sự
                   </p>
                 )}
               </div>
@@ -934,8 +1118,8 @@ export default function Home() {
                     <TrendingUp className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-green-700">Đã chấm công</p>
-                    <p className="text-xs text-green-600">Nhân viên hoạt động</p>
+                    <p className="text-sm font-medium text-green-700">Đã điểm danh</p>
+                    <p className="text-xs text-green-600">Nhân sự hoạt động</p>
                   </div>
                 </div>
                 <p className="text-3xl font-bold text-green-900">{activeEmployees}</p>
@@ -951,7 +1135,7 @@ export default function Home() {
                     <Calendar className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-orange-700">Lượt chấm công</p>
+                    <p className="text-sm font-medium text-orange-700">Lượt điểm danh</p>
                     <p className="text-xs text-orange-600">Tháng hiện tại</p>
                   </div>
                 </div>
@@ -969,7 +1153,7 @@ export default function Home() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-purple-700">
-                      {currentUser.role === "admin" ? "Phòng ban" : "Báo cáo"}
+                      {currentUser.role === "admin" ? "Khối/Phòng" : "Báo cáo"}
                     </p>
                     <p className="text-xs text-purple-600">
                       {currentUser.role === "admin" ? "Đang quản lý" : "Tháng hiện tại"}
@@ -998,7 +1182,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-blue-900">🔄 Đồng Bộ Dữ Liệu ZKTeco</h2>
-                  <p className="text-sm text-blue-700">Lấy dữ liệu từ máy chấm công và lưu vào MongoDB (CHÍNH)</p>
+                  <p className="text-sm text-blue-700">Lấy dữ liệu từ máy điểm danh và lưu vào MongoDB (CHÍNH)</p>
                 </div>
               </div>
               <DataSyncManager />
@@ -1062,7 +1246,7 @@ export default function Home() {
                       className="w-full justify-start gap-2 h-10"
                     >
                       <Building2 className="w-4 h-4" />
-                      Quản lý phòng ban
+                      Quản lý Khối/Phòng
                     </Button>
                     <Button
                       variant="outline"
@@ -1080,7 +1264,7 @@ export default function Home() {
                       className="w-full justify-start gap-2 h-10"
                     >
                       <Clock className="w-4 h-4" />
-                      Cấu hình giờ làm việc
+                      Thời gian điểm danh
                     </Button>
                     <Button
                       variant="outline"
@@ -1101,7 +1285,7 @@ export default function Home() {
                     className="w-full justify-start gap-2 h-10"
                   >
                     <UserPlus className="w-4 h-4" />
-                    Quản lý nhân viên
+                    Quản lý nhân sự
                   </Button>
                 )}
                 {(currentUser.role === "admin" || currentUser.role === "truongphong") && (
@@ -1166,15 +1350,15 @@ export default function Home() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-                  Chưa có dữ liệu nhân viên
+                  Chưa có dữ liệu nhân sự
                 </h3>
                 <p className="text-yellow-700 mb-4">
-                  Để bắt đầu sử dụng hệ thống chấm công, bạn cần có dữ liệu nhân viên trong hệ thống.
+                  Để bắt đầu sử dụng hệ thống điểm danh, bạn cần có dữ liệu nhân sự trong hệ thống.
                 </p>
                 <div className="space-y-2 text-sm text-yellow-700">
                   <p className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                    Import dữ liệu từ máy chấm công ZKTeco
+                    Import dữ liệu từ máy điểm danh ZKTeco
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
@@ -1182,7 +1366,7 @@ export default function Home() {
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                    Thêm nhân viên thủ công qua chức năng quản lý
+                    Thêm nhân sự thủ công qua chức năng quản lý
                   </p>
                 </div>
               </div>
@@ -1193,15 +1377,15 @@ export default function Home() {
             <div className="border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Bảng chấm công</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Bảng điểm danh</h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Dữ liệu chấm công tháng {new Date(selectedMonth + "-01").toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                    Dữ liệu điểm danh tháng {new Date(selectedMonth + "-01").toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>{activeEmployees} đã chấm công</span>
+                    <span>{activeEmployees} đã điểm danh</span>
                   </div>
                   <span>•</span>
                   <div className="flex items-center gap-1">
@@ -1258,6 +1442,7 @@ export default function Home() {
                 onBonusPointUpdate={handleBonusPointUpdate}
                 onCustomValueUpdate={handleCustomValueUpdate}
                 onEmployeeUpdate={handleEmployeeUpdate}
+                onAttendanceUpdate={refreshAttendanceData}
                 onPageChange={handlePageSelect}
                 onNextPage={handleNextPage}
                 onPrevPage={handlePrevPage}
@@ -1312,7 +1497,7 @@ export default function Home() {
             <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Import Dữ Liệu Chấm Công từ XML/Excel
+                  Import Dữ Liệu Điểm Danh từ XML/Excel
                 </h2>
                 <Button
                   variant="ghost"

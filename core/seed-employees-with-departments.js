@@ -18,7 +18,7 @@ function getTitleByRole(role, name) {
     }
     return 'Trưởng phòng';
   }
-  return 'Nhân viên';
+  return 'Chuyên viên';
 }
 
 // Helper function to create department ID

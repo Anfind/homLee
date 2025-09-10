@@ -24,6 +24,7 @@ interface AttendanceTableProps {
   onBonusPointUpdate: (employeeId: string, date: string, points: number) => void
   onCustomValueUpdate: (employeeId: string, date: string, columnKey: string, value: string) => void
   onEmployeeUpdate: (employee: Employee) => void
+  onAttendanceUpdate?: () => void // Optional callback để refresh attendance data
   onPageChange: (page: number) => void
   onNextPage: () => void
   onPrevPage: () => void
@@ -41,6 +42,7 @@ export function AttendanceTable({
   onBonusPointUpdate,
   onCustomValueUpdate,
   onEmployeeUpdate,
+  onAttendanceUpdate,
   onPageChange,
   onNextPage,
   onPrevPage,
@@ -53,7 +55,7 @@ export function AttendanceTable({
 
   // Client-side pagination cho employees (vì bây giờ hiển thị tất cả employees)
   const [currentPage, setCurrentPage] = useState(1)
-  const EMPLOYEES_PER_PAGE = 40 // Hiển thị 40 nhân viên mỗi trang
+  const EMPLOYEES_PER_PAGE = 40 // Hiển thị 40 nhân sự mỗi trang
 
   // Helper to get employeeId (handle both id and _id fields from MongoDB)
   const getEmployeeId = (employee: any): string => {
@@ -73,6 +75,16 @@ export function AttendanceTable({
   const [titleInputValue, setTitleInputValue] = useState("")
   const titleInputRef = useRef<HTMLInputElement>(null) // Ref to focus the title input
 
+  // State for inline editing attendance points
+  const [editingAttendance, setEditingAttendance] = useState<{
+    employeeId: string
+    day: number
+    field: 'morning' | 'afternoon' | 'points'
+  } | null>(null)
+  const [attendanceInputValue, setAttendanceInputValue] = useState("")
+  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false)
+  const attendanceInputRef = useRef<HTMLInputElement>(null)
+
   // Focus input when editingCustomCell changes
   useEffect(() => {
     if (editingCustomCell && customInputRef.current) {
@@ -86,6 +98,14 @@ export function AttendanceTable({
       titleInputRef.current.focus()
     }
   }, [editingTitle])
+
+  // Focus attendance input when editingAttendance changes
+  useEffect(() => {
+    if (editingAttendance && attendanceInputRef.current) {
+      attendanceInputRef.current.focus()
+      attendanceInputRef.current.select()
+    }
+  }, [editingAttendance])
 
   // Define custom column keys and their display names
   const customColumns = [
@@ -115,14 +135,17 @@ export function AttendanceTable({
     })
   }, [selectedMonth])
 
-  // Filter employees based on user role and search/filter criteria - HIỂN THỊ TẤT CẢ NHÂN VIÊN
+  // Filter employees based on user role and search/filter criteria - HIỂN THỊ TẤT CẢ NHÂN SỰ
   const filteredEmployees = useMemo(() => {
-    // Bắt đầu với TẤT CẢ nhân viên thay vì chỉ những người có attendance records
+    // Bắt đầu với TẤT CẢ nhân sự thay vì chỉ những người có attendance records
     let filtered = employees;
 
     // Role-based filtering
     if ((user.role === "truongphong" || user.role === "department_manager") && user.department) {
-      filtered = filtered.filter((emp) => emp.department === user.department)
+      filtered = filtered.filter((emp) => 
+        emp.department && user.department && 
+        emp.department.toLowerCase().trim() === user.department.toLowerCase().trim()
+      )
     }
 
     // Search filtering
@@ -276,6 +299,7 @@ export function AttendanceTable({
 
   // Handle bonus point editing (still uses dialog for daily bonus)
   const handleBonusEdit = (employeeId: string, day: number) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
     const currentBonus = getBonusPoints(employeeId, day)
     setEditingBonus({ employeeId, date: dateStr })
@@ -292,6 +316,7 @@ export function AttendanceTable({
 
   // Handle custom value editing (direct input)
   const handleCustomCellEdit = (employeeId: string, columnKey: string) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     // For monthly values, we associate them with the first day of the month
     const dateStr = daysInMonth[0].dateStr
     const currentValue = getCustomDailyValue(employeeId, dateStr, columnKey)
@@ -316,6 +341,7 @@ export function AttendanceTable({
 
   // Handle title editing (direct input)
   const handleEditTitle = (employeeId: string, currentTitle: string) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     setEditingTitle({ employeeId })
     setTitleInputValue(currentTitle)
   }
@@ -336,6 +362,62 @@ export function AttendanceTable({
     }
   }
 
+  // Handlers for attendance inline editing
+  const handleAttendanceEdit = (employeeId: string, day: number, field: 'morning' | 'afternoon' | 'points', currentValue: string | number) => {
+    if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
+    setEditingAttendance({ employeeId, day, field })
+    setAttendanceInputValue(currentValue.toString())
+  }
+
+  const handleAttendanceSave = async () => {
+    if (!editingAttendance || isUpdatingAttendance) return
+    
+    setIsUpdatingAttendance(true)
+    const { employeeId, day, field } = editingAttendance
+    const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
+    
+    try {
+      const response = await fetch('/api/attendance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          date: dateStr,
+          field,
+          value: field === 'points' ? Number(attendanceInputValue) : attendanceInputValue
+        })
+      })
+      
+      if (response.ok) {
+        // Use callback if provided, otherwise reload
+        if (onAttendanceUpdate) {
+          onAttendanceUpdate()
+        } else {
+          window.location.reload()
+        }
+      } else {
+        console.error('Failed to update attendance')
+        alert('Có lỗi khi cập nhật điểm điểm danh')
+      }
+    } catch (error) {
+      console.error('Error updating attendance:', error)
+      alert('Có lỗi khi cập nhật điểm điểm danh')
+    } finally {
+      setIsUpdatingAttendance(false)
+      setEditingAttendance(null)
+      setAttendanceInputValue("")
+    }
+  }
+
+  const handleAttendanceKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAttendanceSave()
+    } else if (e.key === 'Escape') {
+      setEditingAttendance(null)
+      setAttendanceInputValue("")
+    }
+  }
+
   // Show bonus history
   const showBonusHistory = (employeeId: string, day: number) => {
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
@@ -345,7 +427,7 @@ export function AttendanceTable({
   // Export to Excel
   const exportToExcel = () => {
     if (filteredEmployees.length === 0) {
-      alert("Không có dữ liệu nhân viên để xuất Excel.")
+      alert("Không có dữ liệu nhân sự để xuất Excel.")
       return
     }
 
@@ -385,7 +467,7 @@ export function AttendanceTable({
     try {
       const ws = XLSX.utils.json_to_sheet(data)
       const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, "Chấm công")
+      XLSX.utils.book_append_sheet(wb, ws, "Điểm danh")
 
       // Use XLSX.write to get binary data and then trigger download in browser
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
@@ -433,7 +515,7 @@ export function AttendanceTable({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả phòng ban</SelectItem>
+                <SelectItem value="all">Tất cả Khối/Phòng</SelectItem>
                 {departments.map((dept) => (
                   <SelectItem key={dept} value={dept}>
                     {dept}
@@ -447,7 +529,7 @@ export function AttendanceTable({
         {/* Thông tin tổng quan */}
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-            <span className="font-medium">Tổng: {employees.length}</span> nhân viên
+            <span className="font-medium">Tổng: {employees.length}</span> nhân sự
           </div>
           <div className="bg-green-50 px-3 py-2 rounded-lg border border-green-200">
             <span className="font-medium">Hiển thị: {filteredEmployees.length}</span> 
@@ -549,7 +631,7 @@ export function AttendanceTable({
               ) : filteredEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center text-gray-500">
-                    Không có dữ liệu chấm công cho tháng này
+                    Không có dữ liệu điểm danh cho tháng này
                   </td>
                 </tr>
               ) : (
@@ -578,7 +660,7 @@ export function AttendanceTable({
                           onKeyDown={(e) => handleTitleKeyDown(e, employeeId)}
                           className="h-8 text-center p-1"
                         />
-                      ) : (
+                      ) : user.role === "admin" ? (
                         <button
                           onClick={() => handleEditTitle(employeeId, employee.title)}
                           className="flex items-center gap-1 mx-auto text-gray-600 hover:text-gray-800"
@@ -586,6 +668,8 @@ export function AttendanceTable({
                           {employee.title}
                           <Edit3 className="w-3 h-3" />
                         </button>
+                      ) : (
+                        <span className="text-gray-600">{employee.title}</span>
                       )}
                     </td>
 
@@ -595,55 +679,114 @@ export function AttendanceTable({
                       const totalDayPoints = (record?.points || 0) + bonus
                       const isLowPoints = totalDayPoints <= 1
 
+                      // Check if đang edit cell này
+                      const isEditingThisCell = editingAttendance?.employeeId === employeeId && 
+                                               editingAttendance?.day === dayInfo.day &&
+                                               editingAttendance?.field === 'points'
+
                       return (
                         <td
                           key={dayInfo.day}
-                          className={`px-2 py-2 text-center border-r relative group cursor-pointer ${
+                          className={`px-2 py-2 text-center border-r relative group ${
                             isLowPoints ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
-                          }`}
-                          onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
+                          } ${isEditingThisCell ? "ring-2 ring-blue-500 bg-blue-50" : ""}`}
                         >
-                          <div className="flex items-center justify-center gap-1">
-                            <span>{totalDayPoints}</span>
-                            {bonus > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleBonusEdit(employeeId, dayInfo.day)
-                                }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Edit3 className="w-3 h-3 text-blue-600" />
-                              </button>
-                            )}
-                          </div>
+                          {isEditingThisCell ? (
+                            // Edit mode: Show input
+                            <div className="relative">
+                              <Input
+                                ref={attendanceInputRef}
+                                type="number"
+                                step="0.1"
+                                value={attendanceInputValue}
+                                onChange={(e) => setAttendanceInputValue(e.target.value)}
+                                onBlur={handleAttendanceSave}
+                                onKeyDown={handleAttendanceKeyDown}
+                                disabled={isUpdatingAttendance}
+                                className={`h-8 w-16 text-center p-1 text-sm mx-auto ${
+                                  isUpdatingAttendance ? 'opacity-50 cursor-wait' : ''
+                                }`}
+                              />
+                              {isUpdatingAttendance && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            // Display mode: Show value với click handlers
+                            <div 
+                              className={user.role === "admin" ? "cursor-pointer" : ""}
+                              onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
+                              onDoubleClick={user.role === "admin" ? () => handleAttendanceEdit(employeeId, dayInfo.day, 'points', totalDayPoints) : undefined}
+                            >
+                              <div className="flex items-center justify-center gap-1">
+                                <span className="hover:bg-white hover:bg-opacity-50 px-1 rounded transition-colors">
+                                  {totalDayPoints}
+                                </span>
+                                {bonus > 0 && user.role === "admin" && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleBonusEdit(employeeId, dayInfo.day)
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <Edit3 className="w-3 h-3 text-blue-600" />
+                                  </button>
+                                )}
+                              </div>
 
-                          {/* Tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
-                            {record ? (
-                              <>
-                                <div>Sáng: {record.morningCheckIn || "Không có"}</div>
-                                <div>Chiều: {record.afternoonCheckIn || "Không có"}</div>
-                                <div>Điểm gốc: {record.points}</div>
-                                {bonus > 0 && <div>Điểm cộng: {bonus}</div>}
-                              </>
-                            ) : (
-                              <div>Không có dữ liệu chấm công</div>
-                            )}
-                          </div>
+                              {/* Enhanced Tooltip với edit hint */}
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
+                                {record ? (
+                                  <>
+                                    <div className="font-medium mb-1">📊 Chi tiết điểm danh</div>
+                                    <div>🌅 Sáng: {record.morningCheckIn || "Không có"}</div>
+                                    <div>🌆 Chiều: {record.afternoonCheckIn || "Không có"}</div>
+                                    <div className="border-t border-gray-600 pt-1 mt-1">
+                                      <div>📈 Điểm gốc: {record.points}</div>
+                                      {bonus > 0 && <div>⭐ Điểm cộng: {bonus}</div>}
+                                      <div className="font-medium">🎯 Tổng: {totalDayPoints}</div>
+                                    </div>
+                                    {user.role === "admin" && (
+                                      <div className="text-yellow-300 text-center mt-1 text-xs">
+                                        💡 Double-click để chỉnh sửa<br/>
+                                        ⌨️ Enter: Lưu | Esc: Hủy
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>❌ Không có dữ liệu điểm danh</div>
+                                    {user.role === "admin" && (
+                                      <div className="text-yellow-300 text-center mt-1 text-xs">
+                                        💡 Double-click để thêm điểm<br/>
+                                        ⌨️ Enter: Lưu | Esc: Hủy
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </td>
                       )
                     })}
 
                     <td className="px-3 py-2 text-center border-r font-semibold">{totalPoints}</td>
                     <td className="px-3 py-2 text-center border-r">
-                      <button
-                        onClick={() => handleBonusEdit(employeeId, 1)} // Default to day 1 for monthly bonus
-                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
-                      >
-                        {totalBonusPoints}
-                        <Edit3 className="w-3 h-3" />
-                      </button>
+                      {user.role === "admin" ? (
+                        <button
+                          onClick={() => handleBonusEdit(employeeId, 1)} // Default to day 1 for monthly bonus
+                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
+                        >
+                          {totalBonusPoints}
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <span className="text-gray-700">{totalBonusPoints}</span>
+                      )}
                     </td>
                     {/* Editable Commission Cell */}
                     <td className="px-3 py-2 text-center border-r">
@@ -658,7 +801,7 @@ export function AttendanceTable({
                           onKeyDown={handleCustomCellKeyDown}
                           className="h-8 text-center p-1"
                         />
-                      ) : (
+                      ) : user.role === "admin" ? (
                         <button
                           onClick={() => handleCustomCellEdit(employeeId, "commission")}
                           className="text-purple-600 hover:text-purple-800 flex items-center gap-1 mx-auto"
@@ -666,6 +809,10 @@ export function AttendanceTable({
                           {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission") || "Nhập"}
                           <DollarSign className="w-3 h-3" />
                         </button>
+                      ) : (
+                        <span className="text-gray-700">
+                          {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, "commission") || "-"}
+                        </span>
                       )}
                     </td>
                     {/* Editable Custom Columns Cells */}
@@ -681,7 +828,7 @@ export function AttendanceTable({
                             onKeyDown={handleCustomCellKeyDown}
                             className="h-8 text-center p-1"
                           />
-                        ) : (
+                        ) : user.role === "admin" ? (
                           <button
                             onClick={() => handleCustomCellEdit(employeeId, col.key)}
                             className="text-gray-600 hover:text-gray-800 flex items-center gap-1 mx-auto"
@@ -689,6 +836,10 @@ export function AttendanceTable({
                             {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key) || "Nhập"}
                             <PlusSquare className="w-3 h-3" />
                           </button>
+                        ) : (
+                          <span className="text-gray-700">
+                            {getCustomDailyValue(employeeId, daysInMonth[0].dateStr, col.key) || "-"}
+                          </span>
                         )}
                       </td>
                     ))}
@@ -766,7 +917,7 @@ export function AttendanceTable({
       {/* Pagination Controls - Sử dụng employee pagination */}
       <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
         <div className="text-sm text-gray-600">
-          Hiển thị {employeePagination.startIndex}-{employeePagination.endIndex} trong {employeePagination.totalEmployees} nhân viên
+          Hiển thị {employeePagination.startIndex}-{employeePagination.endIndex} trong {employeePagination.totalEmployees} nhân sự
           {employeePagination.totalPages > 1 && ` (Trang ${employeePagination.currentPage}/${employeePagination.totalPages})`}
         </div>
         
