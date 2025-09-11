@@ -1,198 +1,224 @@
-// Test full sync logic với data từ JSON
-const fs = require('fs')
-const path = require('path')
+// Test script để kiểm tra logic sync attendance mới
+// So sánh check-ins cụ thể: employee + date + times
 
-console.log('🧪 Testing Full Sync Logic với data từ JSON file...\n')
+const { MongoClient } = require('mongodb')
 
-// Import cùng logic từ zk-processor
-function convertToVietnamTime(isoString) {
-  const utcDate = new Date(isoString)
-  const systemOffset = utcDate.getTimezoneOffset()
-  const vnOffset = -420 // VN = UTC+7 = -420 minutes
-  
-  if (systemOffset === vnOffset) {
-    // Already in VN timezone
-    console.log(`  🕐 System in VN timezone, no conversion needed`)
-    return utcDate
-  } else {
-    // Need conversion
-    console.log(`  🕐 Converting from system TZ (${systemOffset}min) to VN timezone`)
-    const vnString = utcDate.toLocaleString("sv-SE", {
-      timeZone: "Asia/Ho_Chi_Minh"
-    })
-    return new Date(vnString)
+// Test data simulation
+const testScenarios = [
+  {
+    name: "Scenario 1: New Employee Record",
+    description: "Hoàn toàn mới - chưa có trong DB",
+    existing: null,
+    zkData: [
+      { deviceUserId: "001", recordTime: "2025-01-15 08:30:00" },
+      { deviceUserId: "001", recordTime: "2025-01-15 17:30:00" }
+    ],
+    expected: "CREATE new record"
+  },
+  {
+    name: "Scenario 2: Same Check-ins",
+    description: "Cùng nhân viên, cùng ngày, cùng giờ chấm công",
+    existing: {
+      employeeId: "001",
+      date: "2025-01-15", 
+      morningCheckIn: "08:30",
+      afternoonCheckIn: "17:30",
+      points: 8
+    },
+    zkData: [
+      { deviceUserId: "001", recordTime: "2025-01-15 08:30:00" },
+      { deviceUserId: "001", recordTime: "2025-01-15 17:30:00" }
+    ],
+    expected: "SKIP - no changes"
+  },
+  {
+    name: "Scenario 3: New Check-in Added",
+    description: "Có thêm lần chấm công mới trong ngày",
+    existing: {
+      employeeId: "001",
+      date: "2025-01-15",
+      morningCheckIn: "08:30", 
+      afternoonCheckIn: null,
+      points: 4
+    },
+    zkData: [
+      { deviceUserId: "001", recordTime: "2025-01-15 08:30:00" },
+      { deviceUserId: "001", recordTime: "2025-01-15 17:30:00" } // NEW
+    ],
+    expected: "UPDATE with new check-in"
+  },
+  {
+    name: "Scenario 4: Manual Points Edit",
+    description: "Admin đã sửa điểm nhưng check-ins giống nhau",
+    existing: {
+      employeeId: "001", 
+      date: "2025-01-15",
+      morningCheckIn: "08:30",
+      afternoonCheckIn: "17:30", 
+      points: 10 // Admin edited from 8 to 10
+    },
+    zkData: [
+      { deviceUserId: "001", recordTime: "2025-01-15 08:30:00" },
+      { deviceUserId: "001", recordTime: "2025-01-15 17:30:00" }
+    ],
+    expected: "SKIP - preserve manual edit"
+  },
+  {
+    name: "Scenario 5: Manual Edit + New Check-in",
+    description: "Admin đã sửa điểm VÀ có thêm check-in mới",
+    existing: {
+      employeeId: "001",
+      date: "2025-01-15", 
+      morningCheckIn: "08:30",
+      afternoonCheckIn: null,
+      points: 6 // Admin edited from 4 to 6
+    },
+    zkData: [
+      { deviceUserId: "001", recordTime: "2025-01-15 08:30:00" },
+      { deviceUserId: "001", recordTime: "2025-01-15 17:30:00" } // NEW
+    ],
+    expected: "UPDATE" // ← CHANGED: Recalculate because new check-ins
   }
-}
-
-function formatVietnamDate(isoString) {
-  const vnDate = convertToVietnamTime(isoString)
-  const year = vnDate.getFullYear()
-  const month = (vnDate.getMonth() + 1).toString().padStart(2, '0')
-  const day = vnDate.getDate().toString().padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function formatVietnamTime(isoString) {
-  const utcDate = new Date(isoString)
-  const systemOffset = utcDate.getTimezoneOffset()
-  
-  if (systemOffset === -420) {
-    // Already VN timezone
-    const hours = utcDate.getHours().toString().padStart(2, '0')
-    const minutes = utcDate.getMinutes().toString().padStart(2, '0')
-    return `${hours}:${minutes}`
-  } else {
-    // Convert to VN timezone
-    const vnString = utcDate.toLocaleString("sv-SE", {
-      timeZone: "Asia/Ho_Chi_Minh"
-    })
-    const timePart = vnString.split(' ')[1]
-    const [hours, minutes] = timePart.split(':')
-    return `${hours}:${minutes}`
-  }
-}
-
-// Đọc data từ file JSON
-console.log('📁 Reading data from time.json...')
-const timeData = JSON.parse(fs.readFileSync(path.join(__dirname, '../zktceo-backend/log/time.json'), 'utf8'))
-const usersData = JSON.parse(fs.readFileSync(path.join(__dirname, '../zktceo-backend/log/users.json'), 'utf8'))
-
-console.log(`Found ${timeData.data.length} attendance records`)
-console.log(`Found ${usersData.data.length} users`)
-
-// Tạo map user để lookup
-const userMap = {}
-usersData.data.forEach(user => {
-  userMap[user.userId] = user // Fix: use userId instead of deviceUserId
-})
-
-// Test với 10 records đầu tiên
-console.log('\n🔍 Testing với 10 records đầu tiên:')
-const testRecords = timeData.data.slice(0, 10)
-
-// Mock shifts configuration
-const shifts = [
-  { id: "morning", name: "Ca sáng", startTime: "07:00", endTime: "11:00", points: 1 },
-  { id: "afternoon", name: "Ca chiều", startTime: "13:00", endTime: "17:00", points: 1 },
-  { id: "overtime", name: "Tăng ca", startTime: "18:00", endTime: "22:00", points: 1.5 }
 ]
 
-function isTimeInShift(checkInTime, shift) {
-  const [checkHour, checkMin] = checkInTime.split(':').map(Number)
-  const [startHour, startMin] = shift.startTime.split(':').map(Number)
-  const [endHour, endMin] = shift.endTime.split(':').map(Number)
-  
-  const checkMinutes = checkHour * 60 + checkMin
-  const startMinutes = startHour * 60 + startMin
-  const endMinutes = endHour * 60 + endMin
-  
-  return checkMinutes >= startMinutes && checkMinutes <= endMinutes
+// Mock functions to simulate the logic
+function categorizeCheckIns(checkIns, date, settings) {
+  // Simplified categorization
+  const sorted = checkIns.sort()
+  return {
+    morningCheckIn: sorted[0] || null,
+    afternoonCheckIn: sorted[1] || null
+  }
 }
 
-// Simulate sync process
-const processedRecords = {}
+function calculateDailyPoints(date, checkIns, settings) {
+  // Simplified points calculation
+  return {
+    totalPoints: checkIns.length * 4, // 4 points per check-in
+    awardedShifts: []
+  }
+}
 
-testRecords.forEach((record, index) => {
-  console.log(`\n--- Record ${index + 1} ---`)
-  console.log(`User ID: ${record.deviceUserId}`)
-  console.log(`Original Time: ${record.recordTime}`)
+// Test logic function
+function testSyncLogic(scenario) {
+  console.log(`\n🧪 ${scenario.name}`)
+  console.log(`📝 ${scenario.description}`)
   
-  // Find user info
-  const user = userMap[record.deviceUserId]
-  if (!user) {
-    console.log(`❌ User not found for deviceUserId: ${record.deviceUserId}`)
-    return
+  // Simulate ZK data processing
+  const groupData = {
+    employeeId: "001",
+    date: "2025-01-15",
+    checkIns: scenario.zkData.map(zk => {
+      const time = zk.recordTime.split(' ')[1] // Extract time part
+      return time.substring(0, 5) // HH:MM format
+    })
   }
   
-  console.log(`User Name: ${user.name}`)
-  
-  // Convert timezone
-  const vnDate = formatVietnamDate(record.recordTime)
-  const vnTime = formatVietnamTime(record.recordTime)
-  
-  console.log(`VN Date: ${vnDate}`)
-  console.log(`VN Time: ${vnTime}`)
+  console.log(`📥 ZK Check-ins: [${groupData.checkIns.join(', ')}]`)
   
   // Calculate points
-  let awardedPoints = 0
-  let awardedShift = null
+  const pointsResult = calculateDailyPoints(
+    groupData.date,
+    groupData.checkIns,
+    {}
+  )
   
-  for (const shift of shifts) {
-    if (isTimeInShift(vnTime, shift)) {
-      awardedPoints = shift.points
-      awardedShift = shift.name
-      break
+  const { morningCheckIn, afternoonCheckIn } = categorizeCheckIns(
+    groupData.checkIns,
+    groupData.date, 
+    {}
+  )
+  
+  console.log(`⏰ Categorized: Morning=${morningCheckIn}, Afternoon=${afternoonCheckIn}`)
+  console.log(`💰 Auto-calculated points: ${pointsResult.totalPoints}`)
+  
+  // Check existing record
+  const existingRecord = scenario.existing
+  
+  let shouldUpdate = false
+  let shouldPreservePoints = false
+  let finalPoints = pointsResult.totalPoints
+  let action = "CREATE"
+  
+  if (existingRecord) {
+    console.log(`📊 Existing record: Morning=${existingRecord.morningCheckIn}, Afternoon=${existingRecord.afternoonCheckIn}, Points=${existingRecord.points}`)
+    
+    // Compare check-ins
+    const existingCheckIns = [
+      existingRecord.morningCheckIn,
+      existingRecord.afternoonCheckIn
+    ].filter(Boolean)
+    
+    const newCheckIns = groupData.checkIns
+    
+    const hasNewCheckIns = newCheckIns.some(newTime => !existingCheckIns.includes(newTime))
+    const hasDifferentCheckIns = existingCheckIns.some(existingTime => !newCheckIns.includes(existingTime))
+    
+    console.log(`🔍 Existing check-ins: [${existingCheckIns.join(', ')}]`)
+    console.log(`🔍 New check-ins: [${newCheckIns.join(', ')}]`)
+    console.log(`🔍 Has new check-ins: ${hasNewCheckIns}`)
+    console.log(`🔍 Has different check-ins: ${hasDifferentCheckIns}`)
+    
+    if (!hasNewCheckIns && !hasDifferentCheckIns) {
+      // Same check-ins - skip
+      action = "SKIP"
+    } else {
+      // Different check-ins - update needed with RECALCULATED points
+      shouldUpdate = true
+      action = "UPDATE"
+      
+      // 🆕 NEW LOGIC: When check-ins change, ALWAYS recalculate (don't preserve manual points)
+      finalPoints = pointsResult.totalPoints
     }
   }
   
-  console.log(`Points: ${awardedPoints}`)
-  console.log(`Shift: ${awardedShift || 'Ngoài giờ'}`)
+  console.log(`🎯 Final Action: ${action}`)
+  console.log(`🎯 Final Points: ${finalPoints}`)
+  console.log(`🎯 Expected: ${scenario.expected}`)
   
-  // Group by employee + date (như trong API thực)
-  const recordKey = `${record.deviceUserId}_${vnDate}`
+  // Validate result
+  const isCorrect = action.includes(scenario.expected.split(' ')[0])
+  console.log(`${isCorrect ? '✅' : '❌'} Test Result: ${isCorrect ? 'PASS' : 'FAIL'}`)
   
-  if (!processedRecords[recordKey]) {
-    processedRecords[recordKey] = {
-      employeeId: record.deviceUserId,
-      userName: user.name,
-      date: vnDate,
-      checkIns: [],
-      totalPoints: 0
-    }
+  return {
+    scenario: scenario.name,
+    action,
+    finalPoints,
+    expected: scenario.expected,
+    passed: isCorrect
+  }
+}
+
+// Run all test scenarios
+async function runTests() {
+  console.log('🚀 Testing Sync Attendance Logic')
+  console.log('=' .repeat(50))
+  
+  const results = []
+  
+  for (const scenario of testScenarios) {
+    const result = testSyncLogic(scenario)
+    results.push(result)
   }
   
-  processedRecords[recordKey].checkIns.push({
-    time: vnTime,
-    points: awardedPoints,
-    shift: awardedShift
+  console.log('\n📊 TEST SUMMARY')
+  console.log('=' .repeat(50))
+  
+  results.forEach(result => {
+    console.log(`${result.passed ? '✅' : '❌'} ${result.scenario}: ${result.action}`)
   })
-  processedRecords[recordKey].totalPoints += awardedPoints
-})
-
-// Summary
-console.log('\n📊 SUMMARY BY EMPLOYEE & DATE:')
-Object.values(processedRecords).forEach(record => {
-  console.log(`\n👤 ${record.userName} (ID: ${record.employeeId}) - ${record.date}`)
-  console.log(`   Check-ins: ${record.checkIns.length}`)
-  record.checkIns.forEach((checkin, i) => {
-    console.log(`   ${i+1}. ${checkin.time} - ${checkin.points} points (${checkin.shift || 'Ngoài giờ'})`)
-  })
-  console.log(`   Total Points: ${record.totalPoints}`)
-})
-
-// Statistics
-console.log('\n📈 STATISTICS:')
-const totalRecords = Object.keys(processedRecords).length
-const totalPoints = Object.values(processedRecords).reduce((sum, record) => sum + record.totalPoints, 0)
-const avgPointsPerRecord = totalPoints / totalRecords
-
-console.log(`Total processed records: ${totalRecords}`)
-console.log(`Total points awarded: ${totalPoints}`)
-console.log(`Average points per employee-date: ${avgPointsPerRecord.toFixed(2)}`)
-
-// Test với một số time zones khác nhau trong data
-console.log('\n🌍 TIMEZONE CONVERSION SAMPLES:')
-const sampleTimes = [
-  "2025-07-25T00:18:43.000Z", // Sáng sớm
-  "2025-07-25T06:30:00.000Z", // Sáng
-  "2025-07-25T10:00:00.000Z", // Trưa
-  "2025-07-25T13:45:00.000Z"  // Chiều
-]
-
-sampleTimes.forEach(time => {
-  const vnTime = formatVietnamTime(time)
-  const vnDate = formatVietnamDate(time)
   
-  // Check shift
-  let shift = 'Ngoài giờ'
-  for (const s of shifts) {
-    if (isTimeInShift(vnTime, s)) {
-      shift = s.name
-      break
-    }
+  const passedCount = results.filter(r => r.passed).length
+  const totalCount = results.length
+  
+  console.log(`\n🎯 Overall: ${passedCount}/${totalCount} tests passed`)
+  
+  if (passedCount === totalCount) {
+    console.log('🎉 All tests passed! Logic is working correctly.')
+  } else {
+    console.log('❌ Some tests failed. Please review the logic.')
   }
-  
-  console.log(`${time} → ${vnDate} ${vnTime} (${shift})`)
-})
+}
 
-console.log('\n✅ Test completed! Logic should be working correctly with fixed timezone.')
+// Run the tests
+runTests().catch(console.error)

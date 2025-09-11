@@ -1,8 +1,11 @@
 const { MongoClient } = require('mongodb');
 const fs = require('fs');
 
-// MongoDB connection URL
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/homelee-attendance';
+// MongoDB Atlas connection (production)
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://leehomes_admin:W029yxWJtYf7z5IC@lee-homes-cluster.xmgrbjn.mongodb.net/homelee-attendance?retryWrites=true&w=majority&appName=lee-homes-cluster';
+
+// Local MongoDB connection (backup) - COMMENTED OUT
+// const MONGODB_URI_LOCAL = 'mongodb://localhost:27017/homelee-attendance';
 
 // Read department data
 const DEPARTMENTS_JSON_PATH = '../zktceo-backend/log/department.json';

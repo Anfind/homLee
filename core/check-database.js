@@ -1,7 +1,13 @@
 const { MongoClient } = require('mongodb');
 
 async function checkDatabase() {
-  const client = new MongoClient('mongodb://localhost:27017/homelee-attendance');
+  // MongoDB Atlas connection (production)
+  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://leehomes_admin:W029yxWJtYf7z5IC@lee-homes-cluster.xmgrbjn.mongodb.net/homelee-attendance?retryWrites=true&w=majority&appName=lee-homes-cluster';
+  
+  // Local MongoDB connection (backup) - COMMENTED OUT
+  // const MONGODB_URI_LOCAL = 'mongodb://localhost:27017/homelee-attendance';
+  
+  const client = new MongoClient(MONGODB_URI);
   
   try {
     await client.connect();

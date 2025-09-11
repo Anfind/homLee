@@ -2168,4 +2168,10 @@ Chữ ký: ___________________
 *Báo giá có hiệu lực trong 30 ngày từ ngày lập - Bảo hành 6 tháng cho tất cả services*
 
 
-Vercel + Railway + MongoDB Atlas
+Method: Vercel + Railway + MongoDB Atlas
+
+pass DB: leehomes_admin|W029yxWJtYf7z5IC
+
+lib thêm: npm install mongodb@4.1
+
+cluster string: mongodb+srv://leehomes_admin:W029yxWJtYf7z5IC@lee-homes-cluster.xmgrbjn.mongodb.net/?retryWrites=true&w=majority&appName=lee-homes-cluster

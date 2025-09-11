@@ -9,17 +9,28 @@ import {
   categorizeCheckIns,
   getDefaultCheckInSettings 
 } from '@/lib/attendance/zk-processor'
+import { isZKBackendAvailable, getBackendUrl } from '@/lib/environment'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🔄 Starting attendance sync...')
     await connectDB()
     
+    // 🌐 CLOUD DEPLOYMENT: Check if ZKTeco backend is available
+    if (!isZKBackendAvailable()) {
+      return NextResponse.json({
+        success: false,
+        message: 'Sync chỉ khả dụng trên máy local có kết nối ZKTeco. Vui lòng sử dụng máy công ty để sync dữ liệu.',
+        error: 'ZKTeco backend not available in cloud environment',
+        cloudInfo: 'This is a cloud deployment - device sync requires local machine'
+      }, { status: 503 })
+    }
+    
     const { startDate, endDate } = await request.json()
     console.log('📅 Sync params:', { startDate, endDate })
     
     // Fetch attendance data from zktceo-backend
-    let apiUrl = 'http://localhost:3000/api/attendance'
+    let apiUrl = `${getBackendUrl()}/api/attendance`
     if (startDate && endDate) {
       apiUrl += `/by-date?start=${startDate}&end=${endDate}`
     }
@@ -68,11 +79,7 @@ export async function POST(request: NextRequest) {
         }
         
         checkInSettings = mongoSettings
-        console.log('✅ Sync using check-in settings from MongoDB:')
-        Object.keys(mongoSettings).forEach(day => {
-          const shifts = mongoSettings[day].shifts
-          console.log(`   Day ${day}: ${shifts.map((s: any) => `${s.name} ${s.startTime}-${s.endTime} (${s.points}pts)`).join(', ')}`)
-        })
+        console.log(`✅ Loaded check-in settings from MongoDB (${Object.keys(mongoSettings).length} days configured)`)
       } else {
         console.log('⚠️ No settings found in MongoDB, using defaults for sync')
       }
@@ -85,6 +92,7 @@ export async function POST(request: NextRequest) {
       processed: 0,
       created: 0,
       updated: 0,
+      skipped: 0, // Records skipped (same check-ins, preserve manual edits)
       errors: [] as Array<{
         record?: any
         employeeId?: string
@@ -103,6 +111,10 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔄 Processing ${attendanceRecords.length} ZK attendance records...`)
     
+    // 🚀 OPTIMIZATION: Track processing stats
+    let processedCount = 0
+    let groupCount = 0
+    
     for (const record of attendanceRecords) {
       try {
         // Process each ZK record với timezone conversion
@@ -115,6 +127,7 @@ export async function POST(request: NextRequest) {
             date: processed.date,
             checkIns: []
           })
+          groupCount++
         }
         
         const group = groupedRecords.get(key)!
@@ -124,7 +137,7 @@ export async function POST(request: NextRequest) {
           group.checkIns.push(processed.time)
         }
         
-        syncResults.processed++
+        processedCount++
         
       } catch (error) {
         syncResults.errors.push({
@@ -134,14 +147,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`📊 Grouped into ${groupedRecords.size} unique employee-date combinations`)
+    // 🚀 OPTIMIZATION: Set processed count after loop
+    syncResults.processed = processedCount
+    console.log(`📊 Processed ${processedCount} records into ${groupedRecords.size} unique employee-date combinations`)
 
-    // Process grouped records và calculate points properly
+    // 🚀 OPTIMIZATION: Batch employee validation (LEVEL 1)
+    const allEmployeeIds = Array.from(new Set([...groupedRecords.values()].map(g => g.employeeId)))
+    console.log(`🔍 Validating ${allEmployeeIds.length} unique employees...`)
+    
+    const validEmployees = await Employee.find({ _id: { $in: allEmployeeIds } })
+    const validEmployeeIds = new Set(validEmployees.map(emp => emp._id.toString()))
+    
+    console.log(`✅ Found ${validEmployees.length}/${allEmployeeIds.length} valid employees`)
+
+    // Process grouped records với pre-validated employees
     for (const [key, groupData] of groupedRecords) {
       try {
-        // Verify employee exists
-        const employeeExists = await Employee.findById(groupData.employeeId)
-        if (!employeeExists) {
+        // 🚀 OPTIMIZED: Use pre-fetched employee validation
+        if (!validEmployeeIds.has(groupData.employeeId)) {
           syncResults.errors.push({
             employeeId: groupData.employeeId,
             date: groupData.date,
@@ -163,14 +186,62 @@ export async function POST(request: NextRequest) {
           groupData.date, 
           checkInSettings
         )
+
+        // 🔍 CHECK EXISTING RECORD AND COMPARE CHECK-INS
+        const existingRecord = await AttendanceRecord.findOne({
+          employeeId: groupData.employeeId,
+          date: groupData.date
+        })
+
+        let shouldUpdate = false
+        let finalPoints = pointsResult.totalPoints
+
+        if (existingRecord) {
+          // �️ MANUAL EDIT PROTECTION: Skip if admin has edited this record
+          if (existingRecord.manuallyEdited) {
+            console.log(`🛡️ PROTECTED: Skipping employee ${groupData.employeeId} on ${groupData.date} - admin edited`)
+            syncResults.skipped++
+            continue
+          }
+          
+          // �🔍 COMPARE CHECK-INS: employee + date + times
+          const existingCheckIns = [
+            existingRecord.morningCheckIn,
+            existingRecord.afternoonCheckIn
+          ].filter(Boolean) // Remove null/undefined values
+
+          const newCheckIns = groupData.checkIns
+          
+          // Compare arrays of check-ins
+          const hasNewCheckIns = newCheckIns.some(newTime => !existingCheckIns.includes(newTime))
+          const hasDifferentCheckIns = existingCheckIns.some(existingTime => !newCheckIns.includes(existingTime))
+          
+          // � OPTIMIZED: Reduced verbose logging - only log when different
+          const checkInChanges = hasNewCheckIns || hasDifferentCheckIns
+          if (checkInChanges) {
+            console.log(`🔄 Employee ${groupData.employeeId} on ${groupData.date}: Check-ins changed`)
+          }
+
+          if (!hasNewCheckIns && !hasDifferentCheckIns) {
+            // ⏭️ SAME CHECK-INS: Skip completely (preserve manual edits)
+            syncResults.skipped++
+            continue
+          } else {
+            // 🔄 DIFFERENT CHECK-INS: Update needed with RECALCULATED points
+            shouldUpdate = true
+            
+            // 🆕 NEW CHECK-INS = ALWAYS RECALCULATE (don't preserve manual points)
+            finalPoints = pointsResult.totalPoints
+          }
+        }
         
-        // Build attendance record
+        // Build attendance record với preserved or calculated points
         const attendanceData = {
           employeeId: groupData.employeeId,
           date: groupData.date,
           morningCheckIn,
           afternoonCheckIn,
-          points: pointsResult.totalPoints,
+          points: finalPoints, // Use preserved or calculated points
           // Store detailed shift information for reference
           shifts: pointsResult.awardedShifts.map(awarded => ({
             id: awarded.shiftId,
@@ -182,21 +253,16 @@ export async function POST(request: NextRequest) {
           }))
         }
 
-        console.log(`💰 Employee ${groupData.employeeId} on ${groupData.date}: ${pointsResult.totalPoints} points from ${groupData.checkIns.length} check-ins`)
+        // � OPTIMIZED: Removed individual point calculation logging
 
-        // Upsert attendance record
-        const existingRecord = await AttendanceRecord.findOne({
-          employeeId: attendanceData.employeeId,
-          date: attendanceData.date
-        })
-
-        if (existingRecord) {
-          // Update existing record
+        // 🔄 CREATE OR UPDATE LOGIC
+        if (existingRecord && shouldUpdate) {
+          // Update existing record with new check-ins
           await AttendanceRecord.findByIdAndUpdate(existingRecord._id, attendanceData, {
             runValidators: true
           })
           syncResults.updated++
-        } else {
+        } else if (!existingRecord) {
           // Create new record
           await AttendanceRecord.create(attendanceData)
           syncResults.created++
@@ -210,10 +276,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // � OPTIMIZED: Comprehensive sync summary
+    console.log('📊 SYNC COMPLETED - Summary:')
+    console.log(`   📥 Processed: ${syncResults.processed} ZK records`)
+    console.log(`   👥 Employees: ${allEmployeeIds.length} (${validEmployees.length} valid)`)
+    console.log(`   ✅ Created: ${syncResults.created} new records`)
+    console.log(`   🔄 Updated: ${syncResults.updated} existing records`)
+    console.log(`   🛡️ Protected: ${syncResults.skipped} admin-edited records`)
+    console.log(`   ❌ Errors: ${syncResults.errors.length}`)
+
+    // �📊 Enhanced response message
+    const message = syncResults.skipped > 0
+      ? `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật, ${syncResults.skipped} bỏ qua từ ${syncResults.processed} bản ghi ZK`
+      : `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật từ ${syncResults.processed} bản ghi ZK`
+
     return NextResponse.json({
       success: true,
-      message: `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật từ ${syncResults.processed} bản ghi ZK`,
-      data: syncResults
+      message,
+      data: {
+        ...syncResults,
+        totalSynced: syncResults.created + syncResults.updated,
+        skippedSame: syncResults.skipped
+      }
     })
 
   } catch (error) {

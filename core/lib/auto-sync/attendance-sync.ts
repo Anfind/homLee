@@ -1,5 +1,6 @@
 /**
  * Attendance Sync Module - Đồng bộ dữ liệu điểm danh từ ZKTeco
+ * Cloud-safe: Gracefully handles cloud environment where ZKTeco device sync is not available
  */
 
 import { logAutoSync } from './sync-logger';
@@ -50,6 +51,16 @@ export async function syncAttendanceData(): Promise<SyncResponse> {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Check if it's a cloud environment issue (503 status)
+    if (errorMessage.includes('503') || errorMessage.includes('not available in cloud')) {
+      logAutoSync('info', 'Auto sync not available in cloud environment');
+      return {
+        success: false,
+        message: 'Auto sync is not available in cloud environment. Device sync requires local backend.',
+      };
+    }
+    
     logAutoSync('error', `Sync failed: ${errorMessage}`, error);
     
     return {
@@ -61,6 +72,7 @@ export async function syncAttendanceData(): Promise<SyncResponse> {
 
 /**
  * Kiểm tra kết nối với máy ZKTeco
+ * Cloud-safe: Returns false in cloud environment
  */
 export async function checkZKConnection(): Promise<boolean> {
   try {
@@ -75,13 +87,14 @@ export async function checkZKConnection(): Promise<boolean> {
     return result.connected === true;
 
   } catch (error) {
-    logAutoSync('warn', 'Cannot check ZK connection', error);
+    logAutoSync('warn', 'Cannot check ZK connection (expected in cloud environment)', error);
     return false;
   }
 }
 
 /**
  * Lấy thống kê sync gần đây
+ * Cloud-safe: Returns null in cloud environment
  */
 export async function getSyncStats(): Promise<any> {
   try {
@@ -95,7 +108,7 @@ export async function getSyncStats(): Promise<any> {
     return null;
 
   } catch (error) {
-    logAutoSync('warn', 'Cannot get sync stats', error);
+    logAutoSync('warn', 'Cannot get sync stats (expected in cloud environment)', error);
     return null;
   }
 }

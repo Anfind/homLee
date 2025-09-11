@@ -6,9 +6,9 @@
   "author": "Lee Homes Team",
   "scripts": {
     "build": "next build",
-    "dev": "next dev -p 3001",
+    "dev": "next dev",
     "lint": "next lint",
-    "start": "next start -p 3001",
+    "start": "next start",
     "dev:backend": "cd ../zktceo-backend && node server.js",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
     "mongo:seed": "node seed-data.js",
