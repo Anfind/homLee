@@ -113,16 +113,17 @@ async function testRealSync() {
       console.log('❌ Manual edit detection failed')
     }
     
-    // 5. Test Scenario 4: New check-in with manual edit preservation  
-    console.log('\n🧪 Test 4: New check-in + preserve manual edit')
+    // 5. Test Scenario 4: New check-in with manual edit → RECALCULATE
+    console.log('\n🧪 Test 4: New check-in → RECALCULATE (don\'t preserve manual edit)')
     const newCheckInsWithAddition = ["08:30", "17:30", "12:00"] // Added lunch check-in
     
     const hasNewAfterEdit = newCheckInsWithAddition.some(newTime => !existingCheckIns.includes(newTime))
     console.log(`📊 Has new check-ins after manual edit: ${hasNewAfterEdit}`)
     
     if (hasNewAfterEdit && isManualEdit) {
-      console.log('✅ Should UPDATE but preserve manual points (12)')
-      // In real sync, points would stay 12, not recalculated to 12 (3 check-ins * 4)
+      console.log('✅ Should UPDATE and RECALCULATE points (don\'t preserve manual edits when new data)')
+      console.log('   Logic: New check-ins = 3 × 4 = 12 points (overwrite manual 12)')
+      console.log('   Result: Manual edit is overwritten by new calculation')
     }
     
     // 6. Clean up

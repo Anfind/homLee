@@ -77,7 +77,7 @@ const testScenarios = [
       { deviceUserId: "001", recordTime: "2025-01-15 08:30:00" },
       { deviceUserId: "001", recordTime: "2025-01-15 17:30:00" } // NEW
     ],
-    expected: "UPDATE but preserve manual points"
+    expected: "UPDATE" // ← CHANGED: Recalculate because new check-ins
   }
 ]
 
@@ -163,27 +163,12 @@ function testSyncLogic(scenario) {
       // Same check-ins - skip
       action = "SKIP"
     } else {
-      // Different check-ins - update needed
+      // Different check-ins - update needed with RECALCULATED points
       shouldUpdate = true
       action = "UPDATE"
       
-      // Check for manual points edit
-      const autoCalculatedPoints = pointsResult.totalPoints
-      const currentStoredPoints = existingRecord.points || 0
-      
-      // Calculate what existing check-ins would have given
-      const existingPointsResult = calculateDailyPoints(
-        groupData.date,
-        existingCheckIns,
-        {}
-      )
-      
-      // If stored points differ from what existing check-ins would auto-calculate = manual edit
-      if (currentStoredPoints !== existingPointsResult.totalPoints) {
-        shouldPreservePoints = true
-        finalPoints = currentStoredPoints
-        action = "UPDATE (preserve points)"
-      }
+      // 🆕 NEW LOGIC: When check-ins change, ALWAYS recalculate (don't preserve manual points)
+      finalPoints = pointsResult.totalPoints
     }
   }
   
