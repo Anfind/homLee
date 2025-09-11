@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
       processed: 0,
       created: 0,
       updated: 0,
+      skipped: 0, // Records skipped (no new check-ins)
+      preserved: 0, // Records with preserved manual points
       errors: [] as Array<{
         record?: any
         employeeId?: string
@@ -163,14 +165,79 @@ export async function POST(request: NextRequest) {
           groupData.date, 
           checkInSettings
         )
+
+        // 🔍 CHECK EXISTING RECORD AND COMPARE CHECK-INS
+        const existingRecord = await AttendanceRecord.findOne({
+          employeeId: groupData.employeeId,
+          date: groupData.date
+        })
+
+        let shouldUpdate = false
+        let shouldPreservePoints = false
+        let finalPoints = pointsResult.totalPoints
+
+        if (existingRecord) {
+          // 🔍 COMPARE CHECK-INS: employee + date + times
+          const existingCheckIns = [
+            existingRecord.morningCheckIn,
+            existingRecord.afternoonCheckIn
+          ].filter(Boolean) // Remove null/undefined values
+
+          const newCheckIns = groupData.checkIns
+          
+          // Compare arrays of check-ins
+          const hasNewCheckIns = newCheckIns.some(newTime => !existingCheckIns.includes(newTime))
+          const hasDifferentCheckIns = existingCheckIns.some(existingTime => !newCheckIns.includes(existingTime))
+          
+          console.log(`🔍 Employee ${groupData.employeeId} on ${groupData.date}:`)
+          console.log(`   Existing check-ins: [${existingCheckIns.join(', ')}]`)
+          console.log(`   New check-ins: [${newCheckIns.join(', ')}]`)
+          console.log(`   Has new check-ins: ${hasNewCheckIns}`)
+          console.log(`   Has different check-ins: ${hasDifferentCheckIns}`)
+
+          if (!hasNewCheckIns && !hasDifferentCheckIns) {
+            // ⏭️ SAME CHECK-INS: Skip completely
+            console.log(`⏭️ SKIPPED: Same check-ins for ${groupData.employeeId} on ${groupData.date}`)
+            syncResults.skipped++
+            continue
+          } else {
+            // 🔄 DIFFERENT CHECK-INS: Update needed
+            shouldUpdate = true
+            
+            // 🛡️ PRESERVE MANUAL POINTS if admin edited
+            const autoCalculatedPoints = pointsResult.totalPoints
+            const currentStoredPoints = existingRecord.points || 0
+            
+            // Check if points were manually edited by comparing with what auto-calculation would have given for EXISTING check-ins
+            const existingPointsResult = calculateDailyPoints(
+              groupData.date,
+              existingCheckIns, // Calculate based on existing check-ins
+              checkInSettings
+            )
+            
+            // If stored points differ from what existing check-ins would auto-calculate = manual edit
+            if (currentStoredPoints !== existingPointsResult.totalPoints) {
+              console.log(`🔒 PRESERVING manual edit: Employee ${groupData.employeeId} on ${groupData.date}`)
+              console.log(`   Existing check-ins would auto-calculate: ${existingPointsResult.totalPoints} points`)
+              console.log(`   Admin edited to: ${currentStoredPoints} points`)
+              console.log(`   → Keeping admin's value: ${currentStoredPoints}`)
+              
+              finalPoints = currentStoredPoints
+              shouldPreservePoints = true
+              syncResults.preserved++
+            } else {
+              console.log(`🔄 UPDATING: New check-ins detected, recalculating points`)
+            }
+          }
+        }
         
-        // Build attendance record
+        // Build attendance record với preserved or calculated points
         const attendanceData = {
           employeeId: groupData.employeeId,
           date: groupData.date,
           morningCheckIn,
           afternoonCheckIn,
-          points: pointsResult.totalPoints,
+          points: finalPoints, // Use preserved or calculated points
           // Store detailed shift information for reference
           shifts: pointsResult.awardedShifts.map(awarded => ({
             id: awarded.shiftId,
@@ -182,21 +249,20 @@ export async function POST(request: NextRequest) {
           }))
         }
 
-        console.log(`💰 Employee ${groupData.employeeId} on ${groupData.date}: ${pointsResult.totalPoints} points from ${groupData.checkIns.length} check-ins`)
+        if (shouldPreservePoints) {
+          console.log(`� Employee ${groupData.employeeId} on ${groupData.date}: PRESERVED ${finalPoints} points (was ${pointsResult.totalPoints} auto-calculated)`)
+        } else {
+          console.log(`💰 Employee ${groupData.employeeId} on ${groupData.date}: ${pointsResult.totalPoints} points from ${groupData.checkIns.length} check-ins`)
+        }
 
-        // Upsert attendance record
-        const existingRecord = await AttendanceRecord.findOne({
-          employeeId: attendanceData.employeeId,
-          date: attendanceData.date
-        })
-
-        if (existingRecord) {
-          // Update existing record
+        // 🔄 CREATE OR UPDATE LOGIC
+        if (existingRecord && shouldUpdate) {
+          // Update existing record with new check-ins
           await AttendanceRecord.findByIdAndUpdate(existingRecord._id, attendanceData, {
             runValidators: true
           })
           syncResults.updated++
-        } else {
+        } else if (!existingRecord) {
           // Create new record
           await AttendanceRecord.create(attendanceData)
           syncResults.created++
@@ -210,10 +276,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 📊 Enhanced response message
+    const message = syncResults.preserved > 0
+      ? `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật (${syncResults.preserved} điểm được bảo toàn), ${syncResults.skipped} bỏ qua từ ${syncResults.processed} bản ghi ZK`
+      : syncResults.skipped > 0
+        ? `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật, ${syncResults.skipped} bỏ qua từ ${syncResults.processed} bản ghi ZK`
+        : `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật từ ${syncResults.processed} bản ghi ZK`
+
     return NextResponse.json({
       success: true,
-      message: `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật từ ${syncResults.processed} bản ghi ZK`,
-      data: syncResults
+      message,
+      data: {
+        ...syncResults,
+        totalSynced: syncResults.created + syncResults.updated,
+        preservedEdits: syncResults.preserved,
+        skippedSame: syncResults.skipped
+      }
     })
 
   } catch (error) {
