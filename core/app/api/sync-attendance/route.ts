@@ -68,11 +68,7 @@ export async function POST(request: NextRequest) {
         }
         
         checkInSettings = mongoSettings
-        console.log('✅ Sync using check-in settings from MongoDB:')
-        Object.keys(mongoSettings).forEach(day => {
-          const shifts = mongoSettings[day].shifts
-          console.log(`   Day ${day}: ${shifts.map((s: any) => `${s.name} ${s.startTime}-${s.endTime} (${s.points}pts)`).join(', ')}`)
-        })
+        console.log(`✅ Loaded check-in settings from MongoDB (${Object.keys(mongoSettings).length} days configured)`)
       } else {
         console.log('⚠️ No settings found in MongoDB, using defaults for sync')
       }
@@ -104,6 +100,10 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔄 Processing ${attendanceRecords.length} ZK attendance records...`)
     
+    // 🚀 OPTIMIZATION: Track processing stats
+    let processedCount = 0
+    let groupCount = 0
+    
     for (const record of attendanceRecords) {
       try {
         // Process each ZK record với timezone conversion
@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
             date: processed.date,
             checkIns: []
           })
+          groupCount++
         }
         
         const group = groupedRecords.get(key)!
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
           group.checkIns.push(processed.time)
         }
         
-        syncResults.processed++
+        processedCount++
         
       } catch (error) {
         syncResults.errors.push({
@@ -135,14 +136,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`📊 Grouped into ${groupedRecords.size} unique employee-date combinations`)
+    // 🚀 OPTIMIZATION: Set processed count after loop
+    syncResults.processed = processedCount
+    console.log(`📊 Processed ${processedCount} records into ${groupedRecords.size} unique employee-date combinations`)
 
-    // Process grouped records và calculate points properly
+    // 🚀 OPTIMIZATION: Batch employee validation (LEVEL 1)
+    const allEmployeeIds = Array.from(new Set([...groupedRecords.values()].map(g => g.employeeId)))
+    console.log(`🔍 Validating ${allEmployeeIds.length} unique employees...`)
+    
+    const validEmployees = await Employee.find({ _id: { $in: allEmployeeIds } })
+    const validEmployeeIds = new Set(validEmployees.map(emp => emp._id.toString()))
+    
+    console.log(`✅ Found ${validEmployees.length}/${allEmployeeIds.length} valid employees`)
+
+    // Process grouped records với pre-validated employees
     for (const [key, groupData] of groupedRecords) {
       try {
-        // Verify employee exists
-        const employeeExists = await Employee.findById(groupData.employeeId)
-        if (!employeeExists) {
+        // 🚀 OPTIMIZED: Use pre-fetched employee validation
+        if (!validEmployeeIds.has(groupData.employeeId)) {
           syncResults.errors.push({
             employeeId: groupData.employeeId,
             date: groupData.date,
@@ -194,15 +205,14 @@ export async function POST(request: NextRequest) {
           const hasNewCheckIns = newCheckIns.some(newTime => !existingCheckIns.includes(newTime))
           const hasDifferentCheckIns = existingCheckIns.some(existingTime => !newCheckIns.includes(existingTime))
           
-          console.log(`🔍 Employee ${groupData.employeeId} on ${groupData.date}:`)
-          console.log(`   Existing check-ins: [${existingCheckIns.join(', ')}]`)
-          console.log(`   New check-ins: [${newCheckIns.join(', ')}]`)
-          console.log(`   Has new check-ins: ${hasNewCheckIns}`)
-          console.log(`   Has different check-ins: ${hasDifferentCheckIns}`)
+          // � OPTIMIZED: Reduced verbose logging - only log when different
+          const checkInChanges = hasNewCheckIns || hasDifferentCheckIns
+          if (checkInChanges) {
+            console.log(`🔄 Employee ${groupData.employeeId} on ${groupData.date}: Check-ins changed`)
+          }
 
           if (!hasNewCheckIns && !hasDifferentCheckIns) {
             // ⏭️ SAME CHECK-INS: Skip completely (preserve manual edits)
-            console.log(`⏭️ SKIPPED: Same check-ins for ${groupData.employeeId} on ${groupData.date} (preserving any manual edits)`)
             syncResults.skipped++
             continue
           } else {
@@ -210,12 +220,6 @@ export async function POST(request: NextRequest) {
             shouldUpdate = true
             
             // 🆕 NEW CHECK-INS = ALWAYS RECALCULATE (don't preserve manual points)
-            console.log(`🔄 UPDATING: Check-ins changed, recalculating points`)
-            console.log(`   Old check-ins: [${existingCheckIns.join(', ')}]`)
-            console.log(`   New check-ins: [${newCheckIns.join(', ')}]`)
-            console.log(`   → Recalculating points based on new data: ${finalPoints} points`)
-            
-            // Use new calculated points (don't preserve manual edits when there's new data)
             finalPoints = pointsResult.totalPoints
           }
         }
@@ -238,7 +242,7 @@ export async function POST(request: NextRequest) {
           }))
         }
 
-        console.log(`💰 Employee ${groupData.employeeId} on ${groupData.date}: ${finalPoints} points from ${groupData.checkIns.length} check-ins`)
+        // � OPTIMIZED: Removed individual point calculation logging
 
         // 🔄 CREATE OR UPDATE LOGIC
         if (existingRecord && shouldUpdate) {
@@ -261,7 +265,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 📊 Enhanced response message
+    // � OPTIMIZED: Comprehensive sync summary
+    console.log('📊 SYNC COMPLETED - Summary:')
+    console.log(`   📥 Processed: ${syncResults.processed} ZK records`)
+    console.log(`   👥 Employees: ${allEmployeeIds.length} (${validEmployees.length} valid)`)
+    console.log(`   ✅ Created: ${syncResults.created} new records`)
+    console.log(`   🔄 Updated: ${syncResults.updated} existing records`)
+    console.log(`   🛡️ Protected: ${syncResults.skipped} admin-edited records`)
+    console.log(`   ❌ Errors: ${syncResults.errors.length}`)
+
+    // �📊 Enhanced response message
     const message = syncResults.skipped > 0
       ? `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật, ${syncResults.skipped} bỏ qua từ ${syncResults.processed} bản ghi ZK`
       : `Đồng bộ thành công: ${syncResults.created} mới, ${syncResults.updated} cập nhật từ ${syncResults.processed} bản ghi ZK`
