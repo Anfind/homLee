@@ -214,19 +214,29 @@ export async function PUT(request: NextRequest) {
 
     // Handle field-specific update (for inline editing)
     if (field && value !== undefined) {
+      // 🔍 TRACK MANUAL EDITS: Set manuallyEdited flag when admin edits
+      const isManualEdit = true // This PUT is only called from admin UI edits
+      
       if (field === 'morning') {
         record.morningCheckIn = value
+        record.manuallyEdited = isManualEdit
       } else if (field === 'afternoon') {
-        record.afternoonCheckIn = value
+        record.afternoonCheckIn = value  
+        record.manuallyEdited = isManualEdit
       } else if (field === 'points') {
         record.points = Number(value)
+        record.manuallyEdited = isManualEdit
       }
+      
+      console.log(`🖊️ MANUAL EDIT: Admin edited ${field} for employee ${employeeId} on ${date}`)
+      console.log(`   New value: ${value}, manuallyEdited: ${record.manuallyEdited}`)
     } else {
       // Handle full record update (for backward compatibility)
       if (morningCheckIn !== undefined) record.morningCheckIn = morningCheckIn
       if (afternoonCheckIn !== undefined) record.afternoonCheckIn = afternoonCheckIn
       if (points !== undefined) record.points = points
       if (shifts !== undefined) record.shifts = shifts
+      // Note: Don't set manuallyEdited for programmatic updates
     }
 
     await record.save()

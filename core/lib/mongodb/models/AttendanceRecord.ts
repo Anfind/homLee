@@ -7,6 +7,7 @@ export interface IAttendanceRecord extends Document {
   morningCheckIn?: string // HH:MM format
   afternoonCheckIn?: string // HH:MM format  
   points: number
+  manuallyEdited?: boolean // ← NEW: Track if admin manually edited this record
   shifts?: Array<{
     id: string
     name: string
@@ -44,6 +45,10 @@ const AttendanceRecordSchema = new Schema<IAttendanceRecord>({
     type: Number,
     default: 0,
     min: 0
+  },
+  manuallyEdited: {
+    type: Boolean,
+    default: false // Default: not manually edited
   },
   shifts: [{
     id: { type: String, required: true },

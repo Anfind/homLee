@@ -175,7 +175,14 @@ export async function POST(request: NextRequest) {
         let finalPoints = pointsResult.totalPoints
 
         if (existingRecord) {
-          // 🔍 COMPARE CHECK-INS: employee + date + times
+          // �️ MANUAL EDIT PROTECTION: Skip if admin has edited this record
+          if (existingRecord.manuallyEdited) {
+            console.log(`🛡️ PROTECTED: Skipping employee ${groupData.employeeId} on ${groupData.date} - admin edited`)
+            syncResults.skipped++
+            continue
+          }
+          
+          // �🔍 COMPARE CHECK-INS: employee + date + times
           const existingCheckIns = [
             existingRecord.morningCheckIn,
             existingRecord.afternoonCheckIn
