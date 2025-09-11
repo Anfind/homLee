@@ -1,5 +1,17 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "core/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/core/$1"
+    }
+  ],
   "env": {
     "MONGODB_URI": "@mongodb_uri",
     "NEXTAUTH_SECRET": "@nextauth_secret", 
@@ -11,5 +23,5 @@
       "maxDuration": 30
     }
   },
-  "installCommand": "npm install --force"
+  "installCommand": "npm install"
 }
