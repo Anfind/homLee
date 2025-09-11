@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "installCommand": "npm install --include=dev",
   "functions": {
     "core/app/api/**/route.ts": {
       "maxDuration": 30
