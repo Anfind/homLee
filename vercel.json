@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "cd core && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": "core/.next",
-  "installCommand": "cd core && npm install --force",
+  "installCommand": "npm install --force",
   "functions": {
     "core/app/api/**/route.ts": {
       "maxDuration": 30
