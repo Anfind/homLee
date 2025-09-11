@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isCloudEnvironment, getBackendUrl } from '@/lib/environment';
 
 /**
  * API Endpoint: /api/auto-sync
  * Tự động đồng bộ dữ liệu điểm danh từ máy ZKTeco (chạy background)
+ * Cloud-safe: Returns 503 when zktceo-backend is not available
  */
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if running in cloud environment
+    if (isCloudEnvironment()) {
+      console.log('[AUTO-SYNC] Cloud environment detected, auto-sync not available');
+      return NextResponse.json({
+        success: false,
+        message: 'Auto sync is not available in cloud environment. Please use manual sync or run locally.',
+        cloudEnvironment: true,
+        available: false,
+      }, { status: 503 });
+    }
+
     const body = await request.json();
     const { action, timestamp } = body;
 
     console.log(`[AUTO-SYNC] ${new Date().toISOString()} - Auto sync request:`, { action, timestamp });
 
     // Sử dụng endpoint sync-attendance hiện tại với params auto
-    const syncResponse = await fetch('http://localhost:3001/api/sync-attendance', {
+    const backendUrl = getBackendUrl();
+    const syncResponse = await fetch(`${backendUrl}/api/sync-attendance`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,10 +74,23 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  // Check if running in cloud environment
+  if (isCloudEnvironment()) {
+    return NextResponse.json({
+      service: 'auto-sync',
+      status: 'unavailable',
+      enabled: false,
+      cloudEnvironment: true,
+      message: 'Auto sync is not available in cloud environment',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   return NextResponse.json({
     service: 'auto-sync',
     status: 'available',
     enabled: true,
+    cloudEnvironment: false,
     timestamp: new Date().toISOString(),
   });
 }

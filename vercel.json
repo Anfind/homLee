@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "core/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/core/$1"
+    }
+  ],
+  "env": {
+    "MONGODB_URI": "@mongodb_uri",
+    "NEXTAUTH_SECRET": "@nextauth_secret", 
+    "NEXTAUTH_URL": "@nextauth_url",
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "core/app/api/*/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}

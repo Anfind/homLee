@@ -9,17 +9,28 @@ import {
   categorizeCheckIns,
   getDefaultCheckInSettings 
 } from '@/lib/attendance/zk-processor'
+import { isZKBackendAvailable, getBackendUrl } from '@/lib/environment'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🔄 Starting attendance sync...')
     await connectDB()
     
+    // 🌐 CLOUD DEPLOYMENT: Check if ZKTeco backend is available
+    if (!isZKBackendAvailable()) {
+      return NextResponse.json({
+        success: false,
+        message: 'Sync chỉ khả dụng trên máy local có kết nối ZKTeco. Vui lòng sử dụng máy công ty để sync dữ liệu.',
+        error: 'ZKTeco backend not available in cloud environment',
+        cloudInfo: 'This is a cloud deployment - device sync requires local machine'
+      }, { status: 503 })
+    }
+    
     const { startDate, endDate } = await request.json()
     console.log('📅 Sync params:', { startDate, endDate })
     
     // Fetch attendance data from zktceo-backend
-    let apiUrl = 'http://localhost:3000/api/attendance'
+    let apiUrl = `${getBackendUrl()}/api/attendance`
     if (startDate && endDate) {
       apiUrl += `/by-date?start=${startDate}&end=${endDate}`
     }
