@@ -737,8 +737,10 @@ export function AttendanceTable({
                                 )}
                               </div>
 
-                              {/* Enhanced Tooltip với edit hint */}
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
+                              {/* Smart Tooltip - hiển thị bên dưới cho 3 dòng đầu */}
+                              <div className={`absolute left-1/2 transform -translate-x-1/2 px-3 py-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap ${
+                                index < 3 ? 'top-full mt-2' : 'bottom-full mb-2'
+                              }`}>
                                 {record ? (
                                   <>
                                     <div className="font-medium mb-1">📊 Chi tiết điểm danh</div>
