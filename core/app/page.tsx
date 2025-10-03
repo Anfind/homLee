@@ -1193,7 +1193,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             
             {/* Shift Info Panel */}
-            <ShiftInfoPanel className="md:col-span-1" />
+            <ShiftInfoPanel className="md:col-span-1" checkInSettings={checkInSettings} />
             
             {/* Time Selection Panel */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">

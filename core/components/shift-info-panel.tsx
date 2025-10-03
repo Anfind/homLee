@@ -3,30 +3,57 @@
 import { Clock, Info } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 
-interface ShiftInfoPanelProps {
-  className?: string
+export type CheckInSettings = {
+  [key: number]: {
+    shifts: Array<{
+      id: string
+      name: string
+      startTime: string
+      endTime: string
+      points: number
+    }>
+  }
 }
 
-export function ShiftInfoPanel({ className = "" }: ShiftInfoPanelProps) {
+interface ShiftInfoPanelProps {
+  className?: string
+  checkInSettings?: CheckInSettings
+}
+
+export function ShiftInfoPanel({ className = "", checkInSettings }: ShiftInfoPanelProps) {
   // Get current day shift info
   const getCurrentShiftInfo = () => {
     const today = new Date()
     const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
     
-    if (dayOfWeek === 0) { // Sunday
-      return {
-        morning: "07:00-08:45",
-        afternoon: "13:30-14:45", 
-        dayName: "Chủ nhật",
-        isSpecial: true
+    if (!checkInSettings || !checkInSettings[dayOfWeek]) {
+      // Fallback to default if no settings available
+      if (dayOfWeek === 0) { // Sunday
+        return {
+          morning: "07:00-08:45",
+          afternoon: "13:30-14:45", 
+          dayName: "Chủ nhật",
+          isSpecial: true
+        }
+      } else { // Monday to Saturday
+        return {
+          morning: "07:00-07:45",
+          afternoon: "13:30-14:00",
+          dayName: ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"][dayOfWeek],
+          isSpecial: false
+        }
       }
-    } else { // Monday to Saturday
-      return {
-        morning: "07:00-07:45",
-        afternoon: "13:30-14:00",
-        dayName: ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"][dayOfWeek],
-        isSpecial: false
-      }
+    }
+
+    const todayShifts = checkInSettings[dayOfWeek].shifts
+    const morningShift = todayShifts.find(shift => shift.name === "Ca sáng")
+    const afternoonShift = todayShifts.find(shift => shift.name === "Ca chiều")
+    
+    return {
+      morning: morningShift ? `${morningShift.startTime}-${morningShift.endTime}` : "Chưa thiết lập",
+      afternoon: afternoonShift ? `${afternoonShift.startTime}-${afternoonShift.endTime}` : "Chưa thiết lập",
+      dayName: dayOfWeek === 0 ? "Chủ nhật" : ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"][dayOfWeek],
+      isSpecial: dayOfWeek === 0 // Sunday is still special
     }
   }
 
