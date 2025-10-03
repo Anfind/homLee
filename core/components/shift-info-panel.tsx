@@ -2,17 +2,46 @@
 
 import { Clock, Info } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import type { CheckInSettings, Shift } from "@/app/page"
 
 interface ShiftInfoPanelProps {
   className?: string
+  checkInSettings?: CheckInSettings // Real shift settings từ database
 }
 
-export function ShiftInfoPanel({ className = "" }: ShiftInfoPanelProps) {
-  // Get current day shift info
+export function ShiftInfoPanel({ className = "", checkInSettings }: ShiftInfoPanelProps) {
+  // Debug: Log checkInSettings để kiểm tra dữ liệu
+  console.log('ShiftInfoPanel checkInSettings:', checkInSettings)
+  
+  // Get current day shift info từ database thay vì hardcode
   const getCurrentShiftInfo = () => {
     const today = new Date()
     const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
     
+    // Nếu có checkInSettings từ database, sử dụng dữ liệu thật
+    if (checkInSettings && checkInSettings[dayOfWeek] && checkInSettings[dayOfWeek].shifts) {
+      const todayShifts = checkInSettings[dayOfWeek].shifts
+      
+      // Tìm ca sáng và ca chiều
+      const morningShift = todayShifts.find((shift: Shift) => 
+        shift.name.toLowerCase().includes('sáng') || 
+        shift.startTime < '12:00'
+      )
+      const afternoonShift = todayShifts.find((shift: Shift) => 
+        shift.name.toLowerCase().includes('chiều') || 
+        shift.startTime >= '12:00'
+      )
+      
+      return {
+        morning: morningShift ? `${morningShift.startTime}-${morningShift.endTime}` : "07:00-07:45",
+        afternoon: afternoonShift ? `${afternoonShift.startTime}-${afternoonShift.endTime}` : "13:30-14:00",
+        dayName: dayOfWeek === 0 ? "Chủ nhật" : 
+                ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"][dayOfWeek],
+        isSpecial: dayOfWeek === 0
+      }
+    }
+    
+    // Fallback to hardcoded values if no checkInSettings
     if (dayOfWeek === 0) { // Sunday
       return {
         morning: "07:00-08:45",
