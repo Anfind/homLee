@@ -49,7 +49,7 @@ export function AttendanceTable({
 }: AttendanceTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [editingBonus, setEditingBonus] = useState<{ employeeId: string; date: string } | null>(null)
+  const [editingBonus, setEditingBonus] = useState<{ employeeId: string; date: string; day: number } | null>(null)
   const [bonusValue, setBonusValue] = useState("")
   const [historyDialog, setHistoryDialog] = useState<{ employeeId: string; date: string } | null>(null)
 
@@ -302,7 +302,7 @@ export function AttendanceTable({
     if (user.role !== "admin") return // Chỉ admin mới được chỉnh sửa điểm
     const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`
     const currentBonus = getBonusPoints(employeeId, day)
-    setEditingBonus({ employeeId, date: dateStr })
+    setEditingBonus({ employeeId, date: dateStr, day })
     setBonusValue(currentBonus.toString())
   }
 
@@ -589,6 +589,9 @@ export function AttendanceTable({
                 <th rowSpan={2} className="px-3 py-2 text-center font-medium text-gray-900 border-r min-w-20">
                   Tổng điểm
                 </th>
+                <th rowSpan={2} className="px-3 py-2 text-center font-medium text-gray-900 border-r min-w-24 bg-red-50">
+                  Điểm trừ
+                </th>
                 <th rowSpan={2} className="px-3 py-2 text-center font-medium text-gray-900 border-r min-w-24">
                   Điểm cộng
                 </th>
@@ -621,7 +624,7 @@ export function AttendanceTable({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center">
+                  <td colSpan={8 + daysInMonth.length} className="px-6 py-8 text-center">
                     <div className="flex items-center justify-center gap-2 text-gray-500">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       Đang tải dữ liệu...
@@ -630,7 +633,7 @@ export function AttendanceTable({
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={7 + daysInMonth.length} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8 + daysInMonth.length} className="px-6 py-8 text-center text-gray-500">
                     Không có dữ liệu điểm danh cho tháng này
                   </td>
                 </tr>
@@ -638,10 +641,15 @@ export function AttendanceTable({
                 paginatedEmployees.map((employee, index) => {
                 const employeeId = getEmployeeId(employee)
                 const totalPoints = getTotalPoints(employeeId)
+                
+                // Tính tổng điểm cộng (từ tất cả các ngày)
                 const totalBonusPoints = daysInMonth.reduce(
                   (sum, dayInfo) => sum + getBonusPoints(employeeId, dayInfo.day),
                   0,
                 )
+                
+                // Tính tổng điểm trừ (lưu ở ngày 2, tương tự bonus tháng ở ngày 1)
+                const totalPenaltyPoints = getBonusPoints(employeeId, 2)
 
                 return (
                   <tr key={employeeId} className="border-b hover:bg-gray-50">
@@ -677,8 +685,8 @@ export function AttendanceTable({
                       const record = getAttendanceRecord(employeeId, dayInfo.day)
                       const bonus = getBonusPoints(employeeId, dayInfo.day)
                       
-                      // ✅ ẨN BONUS CHO NGÀY 1 (dùng cho monthly bonus)
-                      const displayBonus = dayInfo.day === 1 ? 0 : bonus
+                      // ✅ ẨN BONUS CHO NGÀY 1 (monthly bonus) VÀ NGÀY 2 (monthly penalty)
+                      const displayBonus = (dayInfo.day === 1 || dayInfo.day === 2) ? 0 : bonus
                       const totalDayPoints = (record?.points || 0) + displayBonus
                       const isLowPoints = totalDayPoints <= 1
 
@@ -780,6 +788,23 @@ export function AttendanceTable({
                     })}
 
                     <td className="px-3 py-2 text-center border-r font-semibold">{totalPoints}</td>
+                    
+                    {/* Cột Điểm trừ - lưu vào ngày 2 */}
+                    <td className="px-3 py-2 text-center border-r bg-red-50">
+                      {user.role === "admin" ? (
+                        <button
+                          onClick={() => handleBonusEdit(employeeId, 2)} // Lưu vào ngày 2 cho điểm trừ tháng
+                          className="text-red-600 hover:text-red-800 flex items-center gap-1 mx-auto"
+                        >
+                          {totalPenaltyPoints}
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <span className="text-gray-700">{totalPenaltyPoints}</span>
+                      )}
+                    </td>
+                    
+                    {/* Cột Điểm cộng - lưu vào ngày 1 */}
                     <td className="px-3 py-2 text-center border-r">
                       {user.role === "admin" ? (
                         <button
@@ -862,17 +887,27 @@ export function AttendanceTable({
         <Dialog open={true} onOpenChange={() => setEditingBonus(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Chỉnh sửa điểm cộng thêm</DialogTitle>
+              <DialogTitle>
+                {editingBonus.day === 2 
+                  ? "Chỉnh sửa điểm trừ tháng" 
+                  : editingBonus.day === 1
+                  ? "Chỉnh sửa điểm cộng tháng"
+                  : "Chỉnh sửa điểm cộng thêm"}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Điểm cộng thêm</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {editingBonus.day === 2 
+                    ? "Điểm trừ (nhập số âm, VD: -3)" 
+                    : "Điểm cộng thêm"}
+                </label>
                 <Input
                   type="number"
                   step="0.1"
                   value={bonusValue}
                   onChange={(e) => setBonusValue(e.target.value)}
-                  placeholder="Nhập điểm cộng thêm"
+                  placeholder={editingBonus.day === 2 ? "Nhập điểm trừ (VD: -3)" : "Nhập điểm cộng thêm"}
                 />
               </div>
               <div className="flex gap-2 justify-end">
