@@ -642,13 +642,10 @@ export function AttendanceTable({
                 const employeeId = getEmployeeId(employee)
                 const totalPoints = getTotalPoints(employeeId)
                 
-                // Tính tổng điểm cộng (từ tất cả các ngày)
-                const totalBonusPoints = daysInMonth.reduce(
-                  (sum, dayInfo) => sum + getBonusPoints(employeeId, dayInfo.day),
-                  0,
-                )
+                // Tính tổng điểm cộng THÁNG (chỉ từ ngày 1)
+                const totalBonusPoints = getBonusPoints(employeeId, 1)
                 
-                // Tính tổng điểm trừ (lưu ở ngày 2, tương tự bonus tháng ở ngày 1)
+                // Tính tổng điểm trừ THÁNG (chỉ từ ngày 2)
                 const totalPenaltyPoints = getBonusPoints(employeeId, 2)
 
                 return (
