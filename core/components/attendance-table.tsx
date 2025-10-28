@@ -676,7 +676,10 @@ export function AttendanceTable({
                     {daysInMonth.map((dayInfo) => {
                       const record = getAttendanceRecord(employeeId, dayInfo.day)
                       const bonus = getBonusPoints(employeeId, dayInfo.day)
-                      const totalDayPoints = (record?.points || 0) + bonus
+                      
+                      // ✅ ẨN BONUS CHO NGÀY 1 (dùng cho monthly bonus)
+                      const displayBonus = dayInfo.day === 1 ? 0 : bonus
+                      const totalDayPoints = (record?.points || 0) + displayBonus
                       const isLowPoints = totalDayPoints <= 1
 
                       // Check if đang edit cell này
@@ -717,14 +720,14 @@ export function AttendanceTable({
                             // Display mode: Show value với click handlers
                             <div 
                               className={user.role === "admin" ? "cursor-pointer" : ""}
-                              onClick={() => bonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
+                              onClick={() => displayBonus > 0 && showBonusHistory(employeeId, dayInfo.day)}
                               onDoubleClick={user.role === "admin" ? () => handleAttendanceEdit(employeeId, dayInfo.day, 'points', totalDayPoints) : undefined}
                             >
                               <div className="flex items-center justify-center gap-1">
                                 <span className="hover:bg-white hover:bg-opacity-50 px-1 rounded transition-colors">
                                   {totalDayPoints}
                                 </span>
-                                {bonus > 0 && user.role === "admin" && (
+                                {displayBonus > 0 && user.role === "admin" && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -748,7 +751,7 @@ export function AttendanceTable({
                                     <div>🌆 Chiều: {record.afternoonCheckIn || "Không có"}</div>
                                     <div className="border-t border-gray-600 pt-1 mt-1">
                                       <div>📈 Điểm gốc: {record.points}</div>
-                                      {bonus > 0 && <div>⭐ Điểm cộng: {bonus}</div>}
+                                      {displayBonus > 0 && <div>⭐ Điểm cộng: {displayBonus}</div>}
                                       <div className="font-medium">🎯 Tổng: {totalDayPoints}</div>
                                     </div>
                                     {user.role === "admin" && (
